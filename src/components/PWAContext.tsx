@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { DownloadCloud } from "lucide-react";
 
 // Local build version - bump this manually when pushing structural changes
-const APP_VERSION = "1.0.5";
+const APP_VERSION = "1.0.6";
 
 export default function PWAContext() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     // 1. Register the Service Worker
@@ -39,22 +40,31 @@ export default function PWAContext() {
   }, []);
 
   const handleApplyUpdate = async () => {
-    // Unregister SW
-    if ("serviceWorker" in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (const reg of regs) {
-        await reg.unregister();
+    setIsUpdating(true);
+    
+    try {
+      // Unregister SW
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          await reg.unregister();
+        }
       }
-    }
-    // Delete all browser caches completely to reset state
-    if ("caches" in window) {
-      const cacheNames = await caches.keys();
-      for (const name of cacheNames) {
-        await caches.delete(name);
+      // Delete all browser caches completely to reset state
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        for (const name of cacheNames) {
+          await caches.delete(name);
+        }
       }
+    } catch (e) {
+      console.error("Cache clear failed", e);
     }
-    // Force a fresh reload from the server
-    window.location.reload();
+
+    // Force a fresh reload from the server after a short visual delay
+    setTimeout(() => {
+      window.location.reload();
+    }, 800);
   };
 
   if (!updateAvailable) return null;
@@ -75,9 +85,10 @@ export default function PWAContext() {
         </div>
         <button 
           onClick={handleApplyUpdate}
-          className="ml-3 px-4 py-2 bg-white text-blue-600 border border-white hover:bg-transparent hover:text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm active:scale-95 transition-all shrink-0"
+          disabled={isUpdating}
+          className="ml-3 px-4 py-2 bg-white text-blue-600 border border-white hover:bg-white/90 rounded-xl text-xs sm:text-sm font-bold shadow-sm active:scale-95 transition-all shrink-0 min-w-[80px] flex items-center justify-center disabled:opacity-80"
         >
-          Update
+          {isUpdating ? "Updating..." : "Update"}
         </button>
       </div>
     </div>
