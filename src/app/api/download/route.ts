@@ -35,6 +35,7 @@ export async function POST(req: Request) {
           sd_url: scraperData.data.play,
           hd_url: scraperData.data.hdplay || scraperData.data.play,
           mp3_url: scraperData.data.music,
+          author: scraperData.data.author,
         },
       });
     } else {
