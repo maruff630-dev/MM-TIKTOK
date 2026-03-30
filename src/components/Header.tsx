@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowLeft, Menu } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
 
 interface HeaderProps {
   title?: string;
@@ -38,15 +39,18 @@ export default function Header({ title, showBack = false }: HeaderProps) {
 
   return (
     <nav className="fixed top-0 inset-x-0 w-full flex items-center justify-between p-4 px-4 sm:px-6 z-[100] glass">
-      <div className="flex-1 flex justify-start">
-        {showBack ? (
+      <div className="flex-1 flex justify-start items-center gap-2">
+        {showBack && (
           <button 
             onClick={() => router.back()} 
-            className="p-2.5 rounded-full hover:bg-black/5 transition-all text-gray-700 active:scale-95 group"
+            className="p-2 sm:p-2.5 rounded-full hover:bg-black/5 transition-all text-gray-700 active:scale-95 group flex-shrink-0"
           >
             <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:-translate-x-1" />
           </button>
-        ) : <div className="w-10"></div>}
+        )}
+        <div className="relative w-8 h-8 sm:w-9 sm:h-9 hover:scale-105 transition-transform">
+          <Image src="/logo.png" alt="Logo" fill sizes="40px" className="object-contain" priority />
+        </div>
       </div>
       
       {/* Title */}
@@ -68,13 +72,13 @@ export default function Header({ title, showBack = false }: HeaderProps) {
           <>
             {/* Backdrop */}
             <div 
-              className={`fixed inset-0 bg-black/10 backdrop-blur-sm z-[110] transition-opacity duration-300 ${isMenuClosing ? "opacity-0" : "opacity-100"}`} 
+              className={`fixed inset-0 bg-black/40 backdrop-blur-md z-[110] transition-opacity duration-300 ${isMenuClosing ? "opacity-0" : "opacity-100"}`} 
               onClick={closeMenu} 
             />
             
-            {/* Menu Modal */}
-            <div className={`fixed sm:absolute sm:top-full sm:mt-4 sm:right-4 top-20 left-4 right-4 sm:left-auto sm:w-64 glass-card p-2.5 sm:p-3 flex flex-col gap-1.5 z-[120] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-white/60 transition-all duration-300 transform sm:origin-top-right origin-top
-              ${isMenuClosing ? "opacity-0 scale-95 translate-y-[-10px]" : "opacity-100 scale-100 translate-y-0"}
+            {/* Menu Modal (Solid background, horizontal slide animation) */}
+            <div className={`fixed sm:absolute sm:top-full sm:mt-4 sm:right-4 top-20 right-4 w-[240px] sm:w-64 bg-white rounded-3xl p-2.5 sm:p-3 flex flex-col gap-1.5 z-[120] shadow-[0_30px_60px_rgba(0,0,0,0.5)] border border-gray-100 transition-all duration-300 transform
+              ${isMenuClosing ? "opacity-0 translate-x-8" : "opacity-100 translate-x-0"}
             `}>
               <button 
                 onClick={() => handleNav('/')} 
