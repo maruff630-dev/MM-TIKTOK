@@ -8,6 +8,7 @@ import axios from "axios";
 export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [downloadingType, setDownloadingType] = useState<"video" | "mp3" | null>(null);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
 
@@ -55,6 +56,39 @@ export default function Home() {
     }
   };
 
+  const handleDownloadFile = async (fileUrl: string, type: "video" | "mp3") => {
+    setDownloadingType(type);
+    try {
+      const response = await fetch("/api/proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          url: fileUrl, 
+          filename: `MM_TIKTOK_${result?.title ? result.title.substring(0, 10) : "Download"}.${type === "video" ? "mp4" : "mp3"}` 
+        })
+      });
+
+      if (!response.ok) throw new Error("Network response was not ok");
+      
+      const blob = await response.blob();
+      const tempUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = tempUrl;
+      a.download = `MM_TIKTOK_${result?.title ? result.title.substring(0, 10) : "Download"}.${type === "video" ? "mp4" : "mp3"}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(tempUrl);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Failed to download file", err);
+      // Fallback: open in new tab if blob fails
+      window.open(fileUrl, "_blank");
+    } finally {
+      setDownloadingType(null);
+    }
+  };
+
   const hasContent = loading || result || error;
 
   return (
@@ -68,12 +102,12 @@ export default function Home() {
         
         {/* Header Text & Logo */}
         <div className={`flex flex-col items-center text-center transition-all duration-700 ${hasContent ? "scale-90 opacity-90 mb-6" : "scale-100 mb-10"}`}>
-          <div className={`relative drop-shadow-xl transition-all duration-700 ease-out hover:scale-105 ${hasContent ? "w-12 h-12 mb-3" : "w-20 h-20 mb-5"}`}>
+          <div className={`relative transition-all duration-700 ease-out hover:scale-110 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-pulse ${hasContent ? "w-8 h-8 mb-3" : "w-14 h-14 mb-4"}`}>
             <Image 
               src="/logo.png" 
               alt="MM TIKTOK Logo" 
               fill 
-              sizes="80px"
+              sizes="60px"
               className="object-contain" 
               priority
             />
@@ -181,27 +215,33 @@ export default function Home() {
               {/* Download Action Buttons */}
               <div className="w-full flex gap-3 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 fill-mode-both">
                 {/* Video Button */}
-                <a 
-                  href={result.hd_url || result.sd_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/25 transition-all active:scale-[0.98]"
+                <button 
+                  onClick={() => handleDownloadFile(result.hd_url || result.sd_url, "video")}
+                  disabled={downloadingType !== null}
+                  className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/25 transition-all active:scale-[0.98] disabled:opacity-70 disabled:scale-100"
                 >
-                  <Download className="w-5 h-5 mb-1" />
+                  {downloadingType === "video" ? (
+                    <Loader2 className="w-5 h-5 mb-1 animate-spin" />
+                  ) : (
+                    <Download className="w-5 h-5 mb-1" />
+                  )}
                   <span className="text-xs">Video</span>
-                </a>
+                </button>
                 
                 {/* MP3 Audio Button */}
                 {result.mp3_url && (
-                  <a 
-                    href={result.mp3_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl shadow-md shadow-pink-500/25 transition-all active:scale-[0.98]"
+                  <button 
+                    onClick={() => handleDownloadFile(result.mp3_url, "mp3")}
+                    disabled={downloadingType !== null}
+                    className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/25 transition-all active:scale-[0.98] disabled:opacity-70 disabled:scale-100"
                   >
-                    <Music className="w-5 h-5 mb-1 text-pink-100" />
+                    {downloadingType === "mp3" ? (
+                      <Loader2 className="w-5 h-5 mb-1 animate-spin" />
+                    ) : (
+                      <Music className="w-5 h-5 mb-1" />
+                    )}
                     <span className="text-xs">MP3 Audio</span>
-                  </a>
+                  </button>
                 )}
               </div>
             </div>
