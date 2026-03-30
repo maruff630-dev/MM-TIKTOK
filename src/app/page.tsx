@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Download, Link as LinkIcon, Loader2, CheckCircle, ClipboardPaste, Music, AlertCircle, ArrowLeft, Menu } from "lucide-react";
+import { Download, Link as LinkIcon, Loader2, ClipboardPaste, Music, AlertCircle } from "lucide-react";
 import axios from "axios";
+import Header from "@/components/Header";
+import TikTokLogo from "@/components/TikTokLogo";
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -11,8 +13,7 @@ export default function Home() {
   const [downloadingType, setDownloadingType] = useState<"video" | "mp3" | null>(null);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
+  
   const processDownload = async (linkToDownload: string) => {
     if (!linkToDownload.trim()) {
       setError("Please put a valid TikTok URL");
@@ -96,62 +97,7 @@ export default function Home() {
     <main className="flex flex-col min-h-[100dvh] relative overflow-hidden bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 p-4 pb-12 pt-20">
       
       {/* Top Header Navigation */}
-      <nav className="absolute top-0 left-0 right-0 w-full flex items-center justify-between p-4 px-6 md:px-8 z-50">
-        <button 
-          onClick={() => {
-            setUrl("");
-            setResult(null);
-          }}
-          className="p-2 rounded-full hover:bg-black/5 transition-all text-gray-700 active:scale-95"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-        
-        {/* Logo (No glow) */}
-        <div className="relative w-10 h-10 transition-transform hover:scale-110">
-          <Image 
-            src="/logo.png" 
-            alt="MM TIKTOK Logo" 
-            fill 
-            sizes="40px"
-            className="object-contain drop-shadow-sm" 
-            priority
-          />
-        </div>
-        
-        {/* Menu Wrapper */}
-        <div className="relative">
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="p-2 rounded-full hover:bg-black/5 transition-all text-gray-700 active:scale-95"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          
-          {/* Dropdown Menu */}
-          {isMenuOpen && (
-            <>
-              {/* Invisible overlay to close menu by clicking outside */}
-              <div className="fixed inset-0 z-[40]" onClick={() => setIsMenuOpen(false)} />
-              <div className="absolute top-full right-0 mt-2 w-56 glass-card p-2 flex flex-col gap-1 z-[50] animate-in slide-in-from-top-2 fade-in duration-200">
-                <a href="/" className="w-full px-4 py-3 rounded-xl font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
-                  Home / Download
-                </a>
-                <a href="/about" className="w-full px-4 py-3 rounded-xl font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
-                  About Us
-                </a>
-                <a href="/policy" className="w-full px-4 py-3 rounded-xl font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
-                  Privacy Policy
-                </a>
-                <div className="h-px bg-gray-200 my-1 mx-2" />
-                <div className="px-4 py-2 text-xs font-semibold text-gray-400 text-center">
-                  Version 1.0.0
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </nav>
+      <Header />
 
       {/* Background Decorative Blob */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-300/30 blur-[120px] pointer-events-none transition-all duration-1000" />
@@ -160,9 +106,17 @@ export default function Home() {
       {/* Main Foreground Container */}
       <div className={`relative z-10 w-full max-w-3xl mx-auto flex flex-col items-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${hasContent ? "pt-2 md:pt-4" : "justify-center min-h-[80dvh] -translate-y-12"}`}>
         
-        {/* Header Text */}
+        {/* Header Text & Beautiful Transparent TikTok Logo */}
         <div className={`flex flex-col items-center text-center transition-all duration-700 ${hasContent ? "scale-90 opacity-90 mb-6 hidden sm:flex" : "scale-100 mb-10"}`}>
-          <h1 className={`font-black text-gray-900 tracking-tight transition-all duration-700 ${hasContent ? "text-2xl md:text-3xl mb-1" : "text-4xl md:text-5xl lg:text-6xl mb-3 leading-tight"}`}>
+          
+          {/* Glassmorphic TikTok Logo */}
+          <div className="w-16 h-16 md:w-20 md:h-20 rounded-[22px] bg-gradient-to-tr from-[#00f2fe] via-[#4facfe] to-[#f093fb] p-[2px] mb-5 shadow-lg shadow-blue-500/20 animate-in zoom-in spin-in-12 duration-1000">
+            <div className="w-full h-full bg-white/70 backdrop-blur-xl rounded-[20px] flex items-center justify-center">
+              <TikTokLogo className="w-8 h-8 md:w-10 md:h-10 text-gray-900 drop-shadow-sm transition-transform hover:scale-110 duration-300" />
+            </div>
+          </div>
+
+          <h1 className={`font-black text-gray-900 tracking-tight transition-all duration-700 ${hasContent ? "text-2xl md:text-3xl mb-1" : "text-4xl md:text-5xl lg:text-7xl mb-3 leading-tight"}`}>
             Download TikTok Free
           </h1>
           <p className={`text-gray-600 font-medium transition-all duration-700 max-w-xl ${hasContent ? "text-sm hidden sm:block" : "text-base md:text-lg"}`}>
@@ -282,8 +236,8 @@ export default function Home() {
                     className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105" 
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                    <Image src="/logo.png" alt="Fallback" width={40} height={40} className="opacity-20 grayscale" />
+                  <div className="w-full h-full flex items-center justify-center bg-gray-50/50 backdrop-blur-sm">
+                    <TikTokLogo className="w-10 h-10 text-gray-400 opacity-50" />
                   </div>
                 )}
                 {/* Gradient overlay for Author Profile & Title */}

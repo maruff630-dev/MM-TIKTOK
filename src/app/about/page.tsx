@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Menu, Info, Shield, Zap, Heart } from "lucide-react";
+import { Info, Shield, Zap, Heart } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import Header from "@/components/Header";
 
 export default function AboutPage() {
   const [loading, setLoading] = useState(true);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     // Simulate real network fetch for the premium skeleton feel
@@ -19,29 +18,7 @@ export default function AboutPage() {
     <main className="flex flex-col min-h-[100dvh] relative overflow-hidden bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 p-4 pb-12 pt-20">
       
       {/* Top Header Navigation */}
-      <nav className="absolute top-0 left-0 right-0 w-full flex items-center justify-between p-4 px-6 md:px-8 z-50 glass">
-        <Link href="/" className="p-2 rounded-full hover:bg-black/5 transition-all text-gray-700 active:scale-95">
-          <ArrowLeft className="w-6 h-6" />
-        </Link>
-        <div className="font-bold text-lg text-gray-800 tracking-wide">About Us</div>
-        
-        {/* Menu Wrapper */}
-        <div className="relative">
-          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 rounded-full hover:bg-black/5 transition-all text-gray-700 active:scale-95">
-            <Menu className="w-6 h-6" />
-          </button>
-          {isMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-[40]" onClick={() => setIsMenuOpen(false)} />
-              <div className="absolute top-full right-0 mt-2 w-56 glass-card p-2 flex flex-col gap-1 z-[50] animate-in slide-in-from-top-2 fade-in duration-200 shadow-2xl">
-                <Link href="/" className="w-full px-4 py-3 rounded-xl font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">Home / Download</Link>
-                <Link href="/about" className="w-full px-4 py-3 rounded-xl font-bold text-blue-600 bg-blue-50 transition-colors">About Us</Link>
-                <Link href="/policy" className="w-full px-4 py-3 rounded-xl font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">Privacy Policy</Link>
-              </div>
-            </>
-          )}
-        </div>
-      </nav>
+      <Header title="About Us" showBack={true} />
 
       {/* Decorative Blobs */}
       <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-300/30 blur-[120px] pointer-events-none" />
