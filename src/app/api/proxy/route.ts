@@ -23,7 +23,22 @@ export async function GET(req: Request) {
     if (!response.ok) throw new Error("Failed to fetch file from TikTok CDN");
 
     const headers = new Headers();
-    headers.set("Content-Type", response.headers.get("Content-Type") || "application/octet-stream");
+    
+    // Explicitly set media MIME types so Android/iOS Media Scanners detect and index them in the Gallery app
+    if (filename.toLowerCase().endsWith(".mp4")) {
+      headers.set("Content-Type", "video/mp4");
+    } else if (filename.toLowerCase().endsWith(".mp3")) {
+      headers.set("Content-Type", "audio/mpeg");
+    } else {
+      headers.set("Content-Type", response.headers.get("Content-Type") || "application/octet-stream");
+    }
+
+    // Pass the exact file size to the mobile browser to prevent early stream termination (which causes corrupted 'black screen' MP4 files)
+    const contentLength = response.headers.get("Content-Length");
+    if (contentLength) {
+      headers.set("Content-Length", contentLength);
+    }
+
     // Force browser to pop up native download manager
     headers.set("Content-Disposition", `attachment; filename="${filename}"`);
 
