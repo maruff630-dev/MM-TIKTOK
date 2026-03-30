@@ -47,8 +47,8 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-  } catch (error: any) {
-    console.error("TikTok API Error:", error.message || error);
+  } catch (error) {
+    console.error("TikTok API Error:", error instanceof Error ? error.message : String(error));
     return NextResponse.json(
       { status: "error", message: "Network error or API blocked. Try another link." },
       { status: 500 }

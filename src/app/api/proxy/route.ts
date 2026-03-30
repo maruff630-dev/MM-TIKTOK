@@ -20,8 +20,8 @@ export async function POST(req: Request) {
       status: 200,
       headers,
     });
-  } catch (error: any) {
-    console.error("Proxy Download Error:", error.message);
+  } catch (error) {
+    console.error("Proxy Download Error:", error instanceof Error ? error.message : String(error));
     return NextResponse.json({ error: "Failed to download" }, { status: 500 });
   }
 }

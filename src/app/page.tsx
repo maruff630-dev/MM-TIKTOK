@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Download, Link as LinkIcon, Loader2, ClipboardPaste, Music, AlertCircle } from "lucide-react";
 import axios from "axios";
 import Header from "@/components/Header";
@@ -11,6 +10,7 @@ export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [downloadingType, setDownloadingType] = useState<"video" | "mp3" | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
   
@@ -32,7 +32,8 @@ export default function Home() {
       } else {
         setError(response.data.message || "Failed to download video. Please try again.");
       }
-    } catch (err: any) {
+    } catch (err) {
+      console.error(err);
       setError("An error occurred while fetching the video.");
     } finally {
       setLoading(false);
