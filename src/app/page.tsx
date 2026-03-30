@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Download, Link as LinkIcon, Loader2, ClipboardPaste, Music, AlertCircle, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
-import fixWebmDuration from "fix-webm-duration";
+import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 import Header from "@/components/Header";
 import TikTokLogo from "@/components/TikTokLogo";
 
@@ -123,7 +123,7 @@ export default function Home() {
     }
   };
 
-  // ─── Client-side Slideshow → Video Generator ───────────────────────────────
+  // ─── Client-side Slideshow → MP4 Video Generator (WebCodecs API) ─────────────
   const createVideoFromImages = async () => {
     if (!result?.images?.length || !result?.mp3_url) return;
     setIsCreatingVideo(true);
@@ -132,24 +132,23 @@ export default function Home() {
     showToast("Image Crafting... Please wait", "loading");
 
     const blobUrls: string[] = [];
-    let hiddenCanvas: HTMLCanvasElement | null = null;
-    let rafId = 0;
 
     try {
       const images: string[] = result.images;
       const audioSrcUrl: string = result.mp3_url;
       const numImages = images.length;
 
-      // 1 — Fetch audio and decode duration
+      // 1 — Fetch and decode audio to get duration + raw samples
       const audioResp = await fetch(`/api/proxy?url=${encodeURIComponent(audioSrcUrl)}&filename=audio.mp3`);
-      const audioBuffer = await audioResp.arrayBuffer();
-      const helperCtx = new AudioContext();
-      const decoded = await helperCtx.decodeAudioData(audioBuffer.slice(0));
-      const audioDuration = decoded.duration;
-      await helperCtx.close();
+      const audioArrayBuffer = await audioResp.arrayBuffer();
+      const ac = new AudioContext();
+      const decodedAudio = await ac.decodeAudioData(audioArrayBuffer);
+      await ac.close();
+      const audioDuration = decodedAudio.duration;
+      const sampleRate = decodedAudio.sampleRate;
+      const numChannels = decodedAudio.numberOfChannels;
 
       const secsPerImage = numImages > 1 ? audioDuration / numImages : audioDuration;
-      const totalDurationMs = Math.round(audioDuration * 1000);
 
       // 2 — Fetch images as blob URLs
       for (let i = 0; i < numImages; i++) {
@@ -158,30 +157,23 @@ export default function Home() {
         const b = await r2.blob();
         blobUrls.push(URL.createObjectURL(b));
       }
+      showToast("Image Crafting... Please wait", "loading");
 
-      // 3 — Load HTMLImageElements and wait for decode
+      // 3 — Load HTMLImageElements
       const htmlImages = await Promise.all(
-        blobUrls.map(src => new Promise<HTMLImageElement>((res2, rej) => {
+        blobUrls.map(src => new Promise<HTMLImageElement>((ok, fail) => {
           const img = new Image();
-          img.onload = () => res2(img);
-          img.onerror = rej;
+          img.onload = () => ok(img);
+          img.onerror = fail;
           img.src = src;
         }))
       );
 
-      showToast("Image Crafting... Please wait", "loading");
-
-      // 4 — Canvas (lower res 540×960 for mobile GPU compatibility, still crisp 9:16)
+      // 4 — Canvas for frame drawing (no DOM attachment needed - WebCodecs reads pixels directly)
       const W = 540, H = 960;
-      hiddenCanvas = document.createElement("canvas");
-      hiddenCanvas.width = W;
-      hiddenCanvas.height = H;
-      // Must be in DOM and NOT visibility:hidden - use opacity:0 + pointer-events:none
-      // so Android compositor includes it in the GPU rendering tree
-      hiddenCanvas.style.cssText = "position:fixed;top:0;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;";
-      document.body.appendChild(hiddenCanvas);
-      // alpha:false = opaque canvas = faster compositing on Android
-      const ctx2d = hiddenCanvas.getContext("2d", { alpha: false })!;
+      const cvs = document.createElement("canvas");
+      cvs.width = W; cvs.height = H;
+      const ctx = cvs.getContext("2d", { alpha: false })!;
 
       const drawCoverFit = (img: HTMLImageElement) => {
         const ir = img.naturalWidth / img.naturalHeight;
@@ -189,94 +181,119 @@ export default function Home() {
         let dw = W, dh = H, dx = 0, dy = 0;
         if (ir > cr) { dh = H; dw = H * ir; dx = -(dw - W) / 2; }
         else         { dw = W; dh = W / ir;  dy = -(dh - H) / 2; }
-        ctx2d.fillStyle = "#000";
-        ctx2d.fillRect(0, 0, W, H);
-        ctx2d.drawImage(img, dx, dy, dw, dh);
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, W, H);
+        ctx.drawImage(img, dx, dy, dw, dh);
       };
 
-      // Pre-warm: draw each image once so they are GPU-cached before recording
-      for (const img of htmlImages) {
-        drawCoverFit(img);
-        await new Promise(r => setTimeout(r, 60));
-      }
-
-      // Back to first image
-      drawCoverFit(htmlImages[0]);
-
-      // 5 — AudioContext for recording
-      const ac = new AudioContext();
-      const decodedMain = await ac.decodeAudioData(audioBuffer);
-      const audioDest = ac.createMediaStreamDestination();
-      const srcNode = ac.createBufferSource();
-      srcNode.buffer = decodedMain;
-      srcNode.connect(audioDest);
-
-      // 6 — Capture stream
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const captureStream: MediaStream = (hiddenCanvas as any).captureStream(30);
-      const combined = new MediaStream([
-        ...captureStream.getVideoTracks(),
-        ...audioDest.stream.getAudioTracks(),
-      ]);
-
-      const mime = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"].find(
-        m => MediaRecorder.isTypeSupported(m)
-      ) || "video/webm";
-
-      const recorder = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: 2_000_000 });
-
-      // 7 — Recording using RAF loop
-      // KEY FIX: captureStream on Android only sends frames when the canvas is
-      // continuously redrawn via requestAnimationFrame. A one-shot draw produces
-      // no frames in the stream = black video. The RAF loop forces 60fps redraws.
-      const recordingStartTime = Date.now();
-
-      const videoBlob = await new Promise<Blob>((res3, rej3) => {
-        const chunks: Blob[] = [];
-        recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunks.push(ev.data); };
-        recorder.onstop = () => res3(new Blob(chunks, { type: mime }));
-        recorder.onerror = (e) => rej3(e);
-
-        let currentIdx = 0;
-
-        // Continuous redraw loop - this is the critical fix for Android black screen
-        const rafLoop = () => {
-          drawCoverFit(htmlImages[currentIdx]);
-          rafId = requestAnimationFrame(rafLoop);
-        };
-        rafId = requestAnimationFrame(rafLoop);
-
-        recorder.start(100);
-        srcNode.start(0);
-
-        // Advance slide index on timer schedule
-        (async () => {
-          for (let i = 0; i < htmlImages.length; i++) {
-            currentIdx = i;
-            await new Promise(r => setTimeout(r, secsPerImage * 1000));
-          }
-          // Stop RAF loop then recorder
-          cancelAnimationFrame(rafId);
-          rafId = 0;
-          recorder.stop();
-          ac.close();
-        })();
+      // 5 — Setup MP4 muxer
+      const muxer = new Muxer({
+        target: new ArrayBufferTarget(),
+        video: { codec: "avc", width: W, height: H },
+        audio: { codec: "aac", sampleRate, numberOfChannels: numChannels },
+        fastStart: "in-memory",
       });
 
-      const actualDurationMs = Date.now() - recordingStartTime;
-      const finalDuration = Math.max(totalDurationMs, actualDurationMs);
+      // 6 — VideoEncoder (H.264 - works on ALL Android devices)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const VE = (window as any).VideoEncoder;
+      if (!VE) throw new Error("WebCodecs VideoEncoder not supported on this browser");
 
-      // 8 — Patch WebM duration metadata for Android Gallery
-      const fixedBlob = await fixWebmDuration(videoBlob, finalDuration, { logger: false });
+      const videoEncoder: VideoEncoder = new VE({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        output: (chunk: any, meta: any) => muxer.addVideoChunk(chunk, meta),
+        error: (e: Error) => { throw e; },
+      });
+      videoEncoder.configure({
+        codec: "avc1.42001f",  // H.264 Baseline Profile Level 3.1
+        width: W, height: H,
+        bitrate: 1_500_000,
+        framerate: 25,
+      });
 
-      // 9 — Download
+      // 7 — AudioEncoder (AAC)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const AE = (window as any).AudioEncoder;
+      if (!AE) throw new Error("WebCodecs AudioEncoder not supported on this browser");
+
+      const audioEncoder: AudioEncoder = new AE({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        output: (chunk: any, meta: any) => muxer.addAudioChunk(chunk, meta),
+        error: (e: Error) => { throw e; },
+      });
+      audioEncoder.configure({
+        codec: "mp4a.40.2",  // AAC-LC
+        sampleRate,
+        numberOfChannels: numChannels,
+        bitrate: 128_000,
+      });
+
+      // 8 — Encode video frames: draw each image, snapshot as VideoFrame, encode
+      const fps = 25;
+      const frameDurationUs = Math.round(1_000_000 / fps); // microseconds per frame
+      const framesPerImage = Math.ceil(secsPerImage * fps);
+      let frameIndex = 0;
+
+      for (let i = 0; i < htmlImages.length; i++) {
+        drawCoverFit(htmlImages[i]);
+        const framesToEncode = i < htmlImages.length - 1
+          ? framesPerImage
+          : Math.max(1, Math.round(audioDuration * fps) - frameIndex);
+
+        for (let f = 0; f < framesToEncode; f++) {
+          const tsUs = frameIndex * frameDurationUs;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const frame = new (window as any).VideoFrame(cvs, {
+            timestamp: tsUs,
+            duration: frameDurationUs,
+          });
+          videoEncoder.encode(frame, { keyFrame: f % 50 === 0 });
+          frame.close();
+          frameIndex++;
+          // Yield to event loop every 25 frames to keep UI responsive
+          if (frameIndex % 25 === 0) await new Promise(r => setTimeout(r, 0));
+        }
+      }
+
+      // 9 — Encode audio samples from decoded AudioBuffer
+      const audioChunkSize = 4096;
+      for (let offset = 0; offset < decodedAudio.length; offset += audioChunkSize) {
+        const length = Math.min(audioChunkSize, decodedAudio.length - offset);
+        // Build planar Float32 data: [ch0 samples, ch1 samples]
+        const planar = new Float32Array(numChannels * length);
+        for (let ch = 0; ch < numChannels; ch++) {
+          planar.set(decodedAudio.getChannelData(ch).subarray(offset, offset + length), ch * length);
+        }
+        const tsUs = Math.round((offset / sampleRate) * 1_000_000);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const audioData = new (window as any).AudioData({
+          format: "f32-planar",
+          sampleRate,
+          numberOfChannels: numChannels,
+          numberOfFrames: length,
+          timestamp: tsUs,
+          data: planar,
+        });
+        audioEncoder.encode(audioData);
+        audioData.close();
+      }
+
+      // 10 — Flush encoders and finalize MP4
+      await videoEncoder.flush();
+      await audioEncoder.flush();
+      muxer.finalize();
+
+      const mp4Buffer = muxer.target.buffer;
+      const mp4Blob = new Blob([mp4Buffer], { type: "video/mp4" });
+
+      // 11 — Download as .mp4
       const titleClean = result?.title
         ? result.title.substring(0, 12).replace(/[^a-zA-Z0-9]/g, "_")
         : "Slideshow";
-      const dlUrl = URL.createObjectURL(fixedBlob);
+      const dlUrl = URL.createObjectURL(mp4Blob);
       const a = document.createElement("a");
       a.href = dlUrl;
-      a.download = `MM_TIKTOK_${titleClean}_slides.webm`;
+      a.download = `MM_TIKTOK_${titleClean}_slides.mp4`;
       a.style.display = "none";
       document.body.appendChild(a);
       a.click();
@@ -287,11 +304,7 @@ export default function Home() {
       console.error("Video creation failed", err2);
       showToast("Crafting failed. Try again.", "success");
     } finally {
-      if (rafId) cancelAnimationFrame(rafId);
       blobUrls.forEach(u => URL.revokeObjectURL(u));
-      if (hiddenCanvas && document.body.contains(hiddenCanvas)) {
-        document.body.removeChild(hiddenCanvas);
-      }
       setIsCreatingVideo(false);
     }
   };
