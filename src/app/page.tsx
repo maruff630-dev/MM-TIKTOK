@@ -133,12 +133,14 @@ export default function Home() {
 
     const blobUrls: string[] = [];
     let hiddenCanvas: HTMLCanvasElement | null = null;
+    let rafId = 0;
+
     try {
       const images: string[] = result.images;
       const audioSrcUrl: string = result.mp3_url;
       const numImages = images.length;
 
-      // 1 — Fetch audio and decode to get precise duration
+      // 1 — Fetch audio and decode duration
       const audioResp = await fetch(`/api/proxy?url=${encodeURIComponent(audioSrcUrl)}&filename=audio.mp3`);
       const audioBuffer = await audioResp.arrayBuffer();
       const helperCtx = new AudioContext();
@@ -149,7 +151,7 @@ export default function Home() {
       const secsPerImage = numImages > 1 ? audioDuration / numImages : audioDuration;
       const totalDurationMs = Math.round(audioDuration * 1000);
 
-      // 2 — Fetch every image as a same-origin blob URL (avoids canvas CORS taint)
+      // 2 — Fetch images as blob URLs
       for (let i = 0; i < numImages; i++) {
         showToast(`Fetching image ${i + 1}/${numImages}...`, "loading");
         const r2 = await fetch(`/api/proxy?url=${encodeURIComponent(images[i])}&filename=img_${i}.jpg`);
@@ -157,7 +159,7 @@ export default function Home() {
         blobUrls.push(URL.createObjectURL(b));
       }
 
-      // 3 — Load as HTMLImageElement
+      // 3 — Load HTMLImageElements and wait for decode
       const htmlImages = await Promise.all(
         blobUrls.map(src => new Promise<HTMLImageElement>((res2, rej) => {
           const img = new Image();
@@ -169,42 +171,18 @@ export default function Home() {
 
       showToast("Image Crafting... Please wait", "loading");
 
-      // 4 — Canvas 9:16 vertical
-      // IMPORTANT: canvas must be attached to DOM so Android GPU compositor doesn't
-      // drop frames from off-screen canvases (which causes the black screen problem).
-      const W = 720, H = 1280;
+      // 4 — Canvas (lower res 540×960 for mobile GPU compatibility, still crisp 9:16)
+      const W = 540, H = 960;
       hiddenCanvas = document.createElement("canvas");
       hiddenCanvas.width = W;
       hiddenCanvas.height = H;
-      hiddenCanvas.style.cssText = "position:fixed;top:-99999px;left:-99999px;width:1px;height:1px;visibility:hidden;pointer-events:none;";
+      // Must be in DOM and NOT visibility:hidden - use opacity:0 + pointer-events:none
+      // so Android compositor includes it in the GPU rendering tree
+      hiddenCanvas.style.cssText = "position:fixed;top:0;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;";
       document.body.appendChild(hiddenCanvas);
-      const ctx2d = hiddenCanvas.getContext("2d")!;
+      // alpha:false = opaque canvas = faster compositing on Android
+      const ctx2d = hiddenCanvas.getContext("2d", { alpha: false })!;
 
-      // 5 — AudioContext: decode audio for playback into MediaStream
-      const ac = new AudioContext();
-      const decodedMain = await ac.decodeAudioData(audioBuffer);
-      const audioDest = ac.createMediaStreamDestination();
-      const srcNode = ac.createBufferSource();
-      srcNode.buffer = decodedMain;
-      srcNode.connect(audioDest);
-
-      // 6 — Combined MediaStream: canvas video + audio
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const captureStream: MediaStream = (hiddenCanvas as any).captureStream(25);
-      const combined = new MediaStream([
-        ...captureStream.getVideoTracks(),
-        ...audioDest.stream.getAudioTracks(),
-      ]);
-
-      const mime = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"].find(
-        m => MediaRecorder.isTypeSupported(m)
-      ) || "video/webm";
-
-      const recorder = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: 2_500_000 });
-      const chunks: Blob[] = [];
-      recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunks.push(ev.data); };
-
-      // Draw first frame BEFORE starting recorder so there are no empty leading frames
       const drawCoverFit = (img: HTMLImageElement) => {
         const ir = img.naturalWidth / img.naturalHeight;
         const cr = W / H;
@@ -216,26 +194,70 @@ export default function Home() {
         ctx2d.drawImage(img, dx, dy, dw, dh);
       };
 
-      drawCoverFit(htmlImages[0]);
-      // Small pause so the first frame is actually captured before starting
-      await new Promise(r => setTimeout(r, 100));
+      // Pre-warm: draw each image once so they are GPU-cached before recording
+      for (const img of htmlImages) {
+        drawCoverFit(img);
+        await new Promise(r => setTimeout(r, 60));
+      }
 
+      // Back to first image
+      drawCoverFit(htmlImages[0]);
+
+      // 5 — AudioContext for recording
+      const ac = new AudioContext();
+      const decodedMain = await ac.decodeAudioData(audioBuffer);
+      const audioDest = ac.createMediaStreamDestination();
+      const srcNode = ac.createBufferSource();
+      srcNode.buffer = decodedMain;
+      srcNode.connect(audioDest);
+
+      // 6 — Capture stream
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const captureStream: MediaStream = (hiddenCanvas as any).captureStream(30);
+      const combined = new MediaStream([
+        ...captureStream.getVideoTracks(),
+        ...audioDest.stream.getAudioTracks(),
+      ]);
+
+      const mime = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"].find(
+        m => MediaRecorder.isTypeSupported(m)
+      ) || "video/webm";
+
+      const recorder = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: 2_000_000 });
+
+      // 7 — Recording using RAF loop
+      // KEY FIX: captureStream on Android only sends frames when the canvas is
+      // continuously redrawn via requestAnimationFrame. A one-shot draw produces
+      // no frames in the stream = black video. The RAF loop forces 60fps redraws.
       const recordingStartTime = Date.now();
 
-      // Set onstop BEFORE calling start+stop to avoid race condition
       const videoBlob = await new Promise<Blob>((res3, rej3) => {
+        const chunks: Blob[] = [];
+        recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunks.push(ev.data); };
         recorder.onstop = () => res3(new Blob(chunks, { type: mime }));
         recorder.onerror = (e) => rej3(e);
 
-        recorder.start(200); // collect chunks every 200ms for better fidelity
+        let currentIdx = 0;
+
+        // Continuous redraw loop - this is the critical fix for Android black screen
+        const rafLoop = () => {
+          drawCoverFit(htmlImages[currentIdx]);
+          rafId = requestAnimationFrame(rafLoop);
+        };
+        rafId = requestAnimationFrame(rafLoop);
+
+        recorder.start(100);
         srcNode.start(0);
 
-        // 7 — Draw each image for secsPerImage seconds
+        // Advance slide index on timer schedule
         (async () => {
           for (let i = 0; i < htmlImages.length; i++) {
-            drawCoverFit(htmlImages[i]);
+            currentIdx = i;
             await new Promise(r => setTimeout(r, secsPerImage * 1000));
           }
+          // Stop RAF loop then recorder
+          cancelAnimationFrame(rafId);
+          rafId = 0;
           recorder.stop();
           ac.close();
         })();
@@ -244,11 +266,10 @@ export default function Home() {
       const actualDurationMs = Date.now() - recordingStartTime;
       const finalDuration = Math.max(totalDurationMs, actualDurationMs);
 
-      // 8 — Patch WebM duration metadata (MediaRecorder doesn't write duration by default)
-      // This is required for Android Gallery / media scanners to show correct duration.
+      // 8 — Patch WebM duration metadata for Android Gallery
       const fixedBlob = await fixWebmDuration(videoBlob, finalDuration, { logger: false });
 
-      // 9 — Trigger download
+      // 9 — Download
       const titleClean = result?.title
         ? result.title.substring(0, 12).replace(/[^a-zA-Z0-9]/g, "_")
         : "Slideshow";
@@ -266,6 +287,7 @@ export default function Home() {
       console.error("Video creation failed", err2);
       showToast("Crafting failed. Try again.", "success");
     } finally {
+      if (rafId) cancelAnimationFrame(rafId);
       blobUrls.forEach(u => URL.revokeObjectURL(u));
       if (hiddenCanvas && document.body.contains(hiddenCanvas)) {
         document.body.removeChild(hiddenCanvas);
