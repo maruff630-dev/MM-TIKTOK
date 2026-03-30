@@ -49,8 +49,11 @@ export default function Home() {
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
-        setUrl(text);
-        processDownload(text);
+        // Automatically extract URL if Android/iOS appended the "Share" text
+        const urlMatch = text.match(/(https?:\/\/[^\s]+)/);
+        const cleanText = urlMatch ? urlMatch[0] : text;
+        setUrl(cleanText);
+        processDownload(cleanText);
       }
     } catch (err) {
       console.log("Failed to paste", err);

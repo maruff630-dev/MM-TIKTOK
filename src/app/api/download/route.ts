@@ -12,13 +12,19 @@ export async function POST(req: Request) {
       );
     }
 
+    // Mobile apps (Android/iOS) typically append extra text when copying links 
+    // e.g. "Check this out! https://vm.tiktok.com/XZY/"
+    // We must extract only the URL from this string
+    const urlMatch = url.match(/(https?:\/\/[^\s]+)/);
+    const cleanUrl = urlMatch ? urlMatch[0] : url;
+
     // Using tikwm API (a popular free TikTok scraping API)
     const apiUrl = "https://www.tikwm.com/api/";
     
     // Tikwm expects urlencoded data or GET params. We'll use axios POST to their API.
     const response = await axios.post(apiUrl, null, {
       params: {
-        url: url,
+        url: cleanUrl,
         hd: 1, // Request HD video
       },
     });
