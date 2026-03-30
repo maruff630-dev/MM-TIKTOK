@@ -13,6 +13,14 @@ export default function Home() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState<{message: string, type: "loading" | "success"} | null>(null);
+
+  const showToast = (message: string, type: "loading" | "success") => {
+    setToast({ message, type });
+    if (type === "success") {
+      setTimeout(() => setToast(null), 3500);
+    }
+  };
   
   const processDownload = async (linkToDownload: string) => {
     if (!linkToDownload.trim()) {
@@ -62,24 +70,41 @@ export default function Home() {
     }
   };
 
-  const handleDownloadFile = (fileUrl: string, type: "video" | "mp3") => {
+  const handleDownloadFile = async (fileUrl: string, type: "video" | "mp3") => {
     setDownloadingType(type);
+    showToast("Downloading... Please wait", "loading");
+    
     try {
-      // Create a clean filename
       const titleClean = result?.title ? result.title.substring(0, 12).replace(/[^a-zA-Z0-9]/g, '_') : "Media";
       const filename = `MM_TIKTOK_${titleClean}.${type === "video" ? "mp4" : "mp3"}`;
-      
-      // Navigate to the edge streaming proxy which sends 'Content-Disposition: attachment'
-      // This bypasses JS ArrayBuffer limits and triggers the native iOS/Android download manager seamlessly.
       const proxyUrl = `/api/proxy?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename)}`;
-      window.location.href = proxyUrl;
+      
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error("Fetch failed");
+      
+      const blob = await response.blob();
+      const tempUrl = window.URL.createObjectURL(blob);
+      
+      // Native anchor download link (forces direct File Save without opening media player overlay)
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = tempUrl;
+      a.download = filename;
+      
+      document.body.appendChild(a);
+      a.click();
+      
+      window.URL.revokeObjectURL(tempUrl);
+      document.body.removeChild(a);
+      showToast("Download Complete!", "success");
       
     } catch (err) {
-      console.error("Failed to route to download proxy", err);
-      window.open(fileUrl, "_blank");
+      console.error("Failed to download file natively", err);
+      // Fallback
+      window.location.href = `/api/proxy?url=${encodeURIComponent(fileUrl)}&filename=download.mp4`;
+      setToast(null);
     } finally {
-      // Revert button spinning state after the native download manager prompt appears
-      setTimeout(() => setDownloadingType(null), 2500);
+      setDownloadingType(null);
     }
   };
 
@@ -303,6 +328,18 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      {/* Floating Notification Toast */}
+      {toast && (
+        <div className={`fixed bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-full flex items-center gap-3 shadow-[0_10px_40px_rgba(0,0,0,0.2)] text-white font-bold animate-in fade-in slide-in-from-bottom-8 duration-300 ${toast.type === "success" ? "bg-green-600 border border-green-500" : "bg-blue-600 border border-blue-500"}`}>
+          {toast.type === "loading" ? (
+            <Loader2 className="w-5 h-5 animate-spin text-white" />
+          ) : (
+            <Download className="w-5 h-5 text-white" />
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
     </main>
   );
 }
