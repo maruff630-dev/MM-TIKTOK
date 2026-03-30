@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Download, Link as LinkIcon, Loader2, ClipboardPaste, Music, AlertCircle, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
+import fixWebmDuration from "fix-webm-duration";
 import Header from "@/components/Header";
 import TikTokLogo from "@/components/TikTokLogo";
 
@@ -131,6 +132,7 @@ export default function Home() {
     showToast("Image Crafting... Please wait", "loading");
 
     const blobUrls: string[] = [];
+    let hiddenCanvas: HTMLCanvasElement | null = null;
     try {
       const images: string[] = result.images;
       const audioSrcUrl: string = result.mp3_url;
@@ -145,6 +147,7 @@ export default function Home() {
       await helperCtx.close();
 
       const secsPerImage = numImages > 1 ? audioDuration / numImages : audioDuration;
+      const totalDurationMs = Math.round(audioDuration * 1000);
 
       // 2 — Fetch every image as a same-origin blob URL (avoids canvas CORS taint)
       for (let i = 0; i < numImages; i++) {
@@ -167,11 +170,15 @@ export default function Home() {
       showToast("Image Crafting... Please wait", "loading");
 
       // 4 — Canvas 9:16 vertical
+      // IMPORTANT: canvas must be attached to DOM so Android GPU compositor doesn't
+      // drop frames from off-screen canvases (which causes the black screen problem).
       const W = 720, H = 1280;
-      const canvas = document.createElement("canvas");
-      canvas.width = W;
-      canvas.height = H;
-      const ctx2d = canvas.getContext("2d")!;
+      hiddenCanvas = document.createElement("canvas");
+      hiddenCanvas.width = W;
+      hiddenCanvas.height = H;
+      hiddenCanvas.style.cssText = "position:fixed;top:-99999px;left:-99999px;width:1px;height:1px;visibility:hidden;pointer-events:none;";
+      document.body.appendChild(hiddenCanvas);
+      const ctx2d = hiddenCanvas.getContext("2d")!;
 
       // 5 — AudioContext: decode audio for playback into MediaStream
       const ac = new AudioContext();
@@ -183,7 +190,7 @@ export default function Home() {
 
       // 6 — Combined MediaStream: canvas video + audio
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const captureStream: MediaStream = (canvas as any).captureStream(25);
+      const captureStream: MediaStream = (hiddenCanvas as any).captureStream(25);
       const combined = new MediaStream([
         ...captureStream.getVideoTracks(),
         ...audioDest.stream.getAudioTracks(),
@@ -197,18 +204,8 @@ export default function Home() {
       const chunks: Blob[] = [];
       recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunks.push(ev.data); };
 
-      // Draw first frame before starting so the recorder captures something immediately
-      ctx2d.fillStyle = "#000";
-      ctx2d.fillRect(0, 0, W, H);
-      ctx2d.drawImage(htmlImages[0], 0, 0, W, H);
-
-      recorder.start(500);
-      srcNode.start(0);
-
-      // 7 — Draw each image for secsPerImage seconds
-      for (let i = 0; i < htmlImages.length; i++) {
-        const img = htmlImages[i];
-        // Cover-fit the image on the canvas
+      // Draw first frame BEFORE starting recorder so there are no empty leading frames
+      const drawCoverFit = (img: HTMLImageElement) => {
         const ir = img.naturalWidth / img.naturalHeight;
         const cr = W / H;
         let dw = W, dh = H, dx = 0, dy = 0;
@@ -217,21 +214,45 @@ export default function Home() {
         ctx2d.fillStyle = "#000";
         ctx2d.fillRect(0, 0, W, H);
         ctx2d.drawImage(img, dx, dy, dw, dh);
-        await new Promise(r => setTimeout(r, secsPerImage * 1000));
-      }
+      };
 
-      recorder.stop();
-      ac.close();
+      drawCoverFit(htmlImages[0]);
+      // Small pause so the first frame is actually captured before starting
+      await new Promise(r => setTimeout(r, 100));
 
-      const videoBlob = await new Promise<Blob>(res3 => {
+      const recordingStartTime = Date.now();
+
+      // Set onstop BEFORE calling start+stop to avoid race condition
+      const videoBlob = await new Promise<Blob>((res3, rej3) => {
         recorder.onstop = () => res3(new Blob(chunks, { type: mime }));
+        recorder.onerror = (e) => rej3(e);
+
+        recorder.start(200); // collect chunks every 200ms for better fidelity
+        srcNode.start(0);
+
+        // 7 — Draw each image for secsPerImage seconds
+        (async () => {
+          for (let i = 0; i < htmlImages.length; i++) {
+            drawCoverFit(htmlImages[i]);
+            await new Promise(r => setTimeout(r, secsPerImage * 1000));
+          }
+          recorder.stop();
+          ac.close();
+        })();
       });
 
-      // 8 — Trigger download
+      const actualDurationMs = Date.now() - recordingStartTime;
+      const finalDuration = Math.max(totalDurationMs, actualDurationMs);
+
+      // 8 — Patch WebM duration metadata (MediaRecorder doesn't write duration by default)
+      // This is required for Android Gallery / media scanners to show correct duration.
+      const fixedBlob = await fixWebmDuration(videoBlob, finalDuration, { logger: false });
+
+      // 9 — Trigger download
       const titleClean = result?.title
         ? result.title.substring(0, 12).replace(/[^a-zA-Z0-9]/g, "_")
         : "Slideshow";
-      const dlUrl = URL.createObjectURL(videoBlob);
+      const dlUrl = URL.createObjectURL(fixedBlob);
       const a = document.createElement("a");
       a.href = dlUrl;
       a.download = `MM_TIKTOK_${titleClean}_slides.webm`;
@@ -246,6 +267,9 @@ export default function Home() {
       showToast("Crafting failed. Try again.", "success");
     } finally {
       blobUrls.forEach(u => URL.revokeObjectURL(u));
+      if (hiddenCanvas && document.body.contains(hiddenCanvas)) {
+        document.body.removeChild(hiddenCanvas);
+      }
       setIsCreatingVideo(false);
     }
   };
