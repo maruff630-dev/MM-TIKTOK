@@ -92,7 +92,7 @@ export default function AboutPage() {
                 MM TIKTOK was born out of a stark necessity: the internet was flooded with mediocre video downloaders that were riddled with invasive ads, poor design, and clunky interfaces. We set out to change this narrative by building a premium, mobile-native web application that feels as smooth and professional as the actual social media platforms it interacts with. Our primary mission is to offer users a reliable, lightning-fast utility to save their favorite TikTok memories, trends, and educational clips in perfect Ultra HD quality, and absolutely watermark-free. 
               </p>
               <p className="text-gray-600 text-sm md:text-base leading-relaxed text-justify">
-                We believe that premium software shouldn't have to cost a premium price. That's why MM TIKTOK is completely free to use. By combining beautiful glassmorphic UI design, intelligent network optimization, and secure proxy channels, we ensure that every single interaction on this platform is uninterrupted and flawless. We continually innovate on our infrastructure to provide zero-downtime downloads, instant MP3 audio extractions, and a gorgeous aesthetic that respects the modern user's eyes. Welcome to the future of media saving online.
+                We believe that premium software shouldn&apos;t have to cost a premium price. That&apos;s why MM TIKTOK is completely free to use. By combining beautiful glassmorphic UI design, intelligent network optimization, and secure proxy channels, we ensure that every single interaction on this platform is uninterrupted and flawless. We continually innovate on our infrastructure to provide zero-downtime downloads, instant MP3 audio extractions, and a gorgeous aesthetic that respects the modern user&apos;s eyes. Welcome to the future of media saving online.
               </p>
             </div>
 
@@ -102,7 +102,7 @@ export default function AboutPage() {
                   <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><Shield className="w-5 h-5" /></div>
                   <h3 className="font-bold text-gray-800">Safe & Secure</h3>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed">We don't store your videos on our servers. Downloads are processed securely and streamed directly to your device. Utmost privacy guaranteed.</p>
+                <p className="text-sm text-gray-600 leading-relaxed">We don&apos;t store your videos on our servers. Downloads are processed securely and streamed directly to your device. Utmost privacy guaranteed.</p>
               </div>
               
               <div className="glass-card flex flex-col p-6 bg-white/90 shadow-sm border-white/60">
