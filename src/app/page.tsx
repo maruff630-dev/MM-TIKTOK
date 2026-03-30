@@ -224,6 +224,19 @@ export default function Home() {
           {loading && !error && (
             <div className="w-full glass-card flex flex-col p-4 animate-in fade-in zoom-in-95 duration-500 border border-white/60">
               <div className="w-full aspect-[9/16] rounded-xl shimmer-light overflow-hidden mb-4 relative shadow-inner">
+                {/* Skeleton Overlay for Author & Title */}
+                <div className="absolute bottom-4 left-4 right-4 z-10 flex flex-col gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-black/10 shadow-sm" />
+                    <div className="flex flex-col gap-1.5">
+                      <div className="w-24 h-3.5 rounded-md bg-black/10" />
+                      <div className="w-16 h-2.5 rounded-md bg-black/10" />
+                    </div>
+                  </div>
+                  <div className="w-[85%] h-3 rounded-md bg-black/10 mt-1" />
+                  <div className="w-[60%] h-3 rounded-md bg-black/10" />
+                </div>
+                
                 {/* Simulated center floating loader icon */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Loader2 className="w-10 h-10 text-blue-400 animate-spin opacity-50" />
@@ -254,10 +267,32 @@ export default function Home() {
                     <Image src="/logo.png" alt="Fallback" width={40} height={40} className="opacity-20 grayscale" />
                   </div>
                 )}
-                {/* Gradient overlay for text */}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent pt-12 pb-3 px-4 pointer-events-none">
-                  <p className="text-white font-medium text-sm drop-shadow-md line-clamp-2 leading-snug">
-                    {result.title || "Ready to save"}
+                {/* Gradient overlay for Author Profile & Title */}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent pt-24 pb-4 px-4 pointer-events-none flex flex-col justify-end">
+                  
+                  {/* Author Info */}
+                  <div className="flex items-center gap-3 mb-2.5">
+                    {result.author?.avatar ? (
+                      <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-white/90 shadow-lg shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={result.author.avatar} alt="Author avatar" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-white/20 border-2 border-white/80 shadow-lg shrink-0" />
+                    )}
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-white font-bold text-sm md:text-base drop-shadow-md truncate">
+                        {result.author?.nickname || "TikTok Creator"}
+                      </span>
+                      <span className="text-white/80 font-medium text-xs drop-shadow-md truncate">
+                        @{result.author?.unique_id || "tiktok"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Video Title */}
+                  <p className="text-white/95 font-medium text-xs md:text-sm drop-shadow-md line-clamp-2 leading-snug">
+                    {result.title || "Ready to save format"}
                   </p>
                 </div>
               </div>
