@@ -5,9 +5,9 @@ export async function POST(req: Request) {
   try {
     const { url } = await req.json();
 
-    if (!url || !url.includes("tiktok.com")) {
+    if (!url || !url.includes("tiktok")) {
       return NextResponse.json(
-        { status: "error", message: "Please provide a valid TikTok URL" },
+        { status: "error", message: "Please provide a valid TikTok link" },
         { status: 400 }
       );
     }
@@ -47,9 +47,9 @@ export async function POST(req: Request) {
       );
     }
   } catch (error: any) {
-    console.error("TikTok API Error:", error.message);
+    console.error("TikTok API Error:", error.message || error);
     return NextResponse.json(
-      { status: "error", message: "Internal server error while fetching video." },
+      { status: "error", message: "Network error or API blocked. Try another link." },
       { status: 500 }
     );
   }

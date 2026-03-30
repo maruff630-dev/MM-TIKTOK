@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Download, Link as LinkIcon, Loader2, CheckCircle, ClipboardPaste, Music } from "lucide-react";
+import { Download, Link as LinkIcon, Loader2, CheckCircle, ClipboardPaste, Music, AlertCircle } from "lucide-react";
 import axios from "axios";
 
 export default function Home() {
@@ -50,159 +50,162 @@ export default function Home() {
       }
     } catch (err) {
       console.log("Failed to paste", err);
-      // Fallback if clipboard access is denied
       if (url) processDownload(url);
-      else setError("Clipboard access denied. Please paste manually and hit Enter.");
+      else setError("Clipboard access denied. Please paste manually and hit Download.");
     }
   };
 
+  const hasContent = loading || result || error;
+
   return (
-    <main className="flex flex-col min-h-[100dvh] relative overflow-hidden items-center justify-center p-4">
+    <main className="flex flex-col min-h-[100dvh] relative overflow-hidden bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 p-4 pb-12">
       {/* Background Decorative Blob */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-300/30 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-300/30 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-300/30 blur-[120px] pointer-events-none transition-all duration-1000" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-300/30 blur-[120px] pointer-events-none transition-all duration-1000" />
 
       {/* Main Foreground Container */}
-      <div className="relative z-10 w-full max-w-3xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-700">
+      <div className={`relative z-10 w-full max-w-3xl mx-auto flex flex-col items-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${hasContent ? "pt-6 md:pt-10" : "justify-center min-h-[100dvh] -translate-y-8"}`}>
         
         {/* Header Text & Logo */}
-        <div className="flex flex-col items-center mb-8 text-center animate-float">
-          <div className="relative w-16 h-16 drop-shadow-xl mb-4 transition-transform hover:scale-105 duration-300">
+        <div className={`flex flex-col items-center text-center transition-all duration-700 ${hasContent ? "scale-90 opacity-90 mb-6" : "scale-100 mb-10"}`}>
+          <div className={`relative drop-shadow-xl transition-all duration-700 ease-out hover:scale-105 ${hasContent ? "w-12 h-12 mb-3" : "w-20 h-20 mb-5"}`}>
             <Image 
               src="/logo.png" 
               alt="MM TIKTOK Logo" 
               fill 
-              sizes="(max-width: 768px) 64px, 64px"
+              sizes="80px"
               className="object-contain" 
               priority
             />
           </div>
-          <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight mb-3">
-            Download TikTok Videos Free
+          <h1 className={`font-black text-gray-900 tracking-tight transition-all duration-700 ${hasContent ? "text-2xl md:text-3xl mb-1" : "text-4xl md:text-5xl lg:text-6xl mb-3 leading-tight"}`}>
+            Download TikTok Free
           </h1>
-          <p className="text-gray-600 font-medium text-base md:text-lg max-w-xl">
+          <p className={`text-gray-600 font-medium transition-all duration-700 max-w-xl ${hasContent ? "text-sm hidden sm:block" : "text-base md:text-lg"}`}>
             The fastest tool to save TikTok videos in <span className="text-blue-600 font-bold">Ultra HD without watermark</span> and get MP3 audio instantly.
           </p>
         </div>
 
-        {/* Action Window */}
-        <div className="w-full flex flex-col items-center gap-6">
-          
-          {/* Central Input Box */}
+        {/* Central Input Box (Moves below result if hasContent) */}
+        <div className={`w-full max-w-2xl flex flex-col items-center transition-all duration-700 ${hasContent ? "order-last mt-8 opacity-80 hover:opacity-100" : "order-2"}`}>
           <form 
             onSubmit={handleManualSubmit} 
-            className="w-full relative glass-card p-2 flex items-center gap-2 group hover:border-blue-200 transition-all duration-300 shadow-[0_10px_40px_rgba(37,99,235,0.08)] bg-white/80"
+            className="w-full relative glass-card p-2 flex items-center gap-2 transition-all duration-500 shadow-[0_10px_40px_rgba(37,99,235,0.08)] bg-white/90 border border-blue-100 hover:border-blue-300"
           >
             <div className="pl-3 hidden sm:flex">
-              <LinkIcon className="text-blue-500 w-5 h-5" />
+              <LinkIcon className="text-blue-500 w-5 h-5 flex-shrink-0" />
             </div>
             
             <input 
               type="url" 
-              placeholder="Paste your TikTok link here..." 
-              className="flex-1 bg-transparent px-3 py-3 outline-none text-gray-800 placeholder:text-gray-400 font-medium text-base md:text-lg min-w-0"
+              placeholder="Paste TikTok link here..." 
+              className="flex-1 bg-transparent px-3 py-3 outline-none text-gray-800 placeholder:text-gray-400 font-medium text-base min-w-0"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               disabled={loading}
             />
 
-            {/* Paste/Download Button */}
+            {/* Combined Paste & Download Button */}
             <button
               type="button"
               onClick={handlePasteAndDownload}
               disabled={loading}
               title="Paste & Download"
-              className="flex items-center gap-2 px-4 md:px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-[0.96] disabled:opacity-70 disabled:grayscale shrink-0"
+              className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-[0.96] disabled:opacity-70 flex-shrink-0 min-w-[120px]"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
                   <ClipboardPaste className="w-5 h-5" />
-                  <span className="hidden sm:inline">Paste</span>
+                  <span>Paste</span>
                 </>
               )}
             </button>
           </form>
+        </div>
 
-          {/* Validation/Feedback Area */}
-          <div className="w-full flex justify-center">
-            {/* Error Message */}
-            {error && (
-              <div className="w-full bg-red-50 text-red-600 px-5 py-3 rounded-2xl border border-red-100 text-sm flex items-center justify-center animate-in fade-in slide-in-from-top-4 shadow-sm">
-                <CheckCircle className="w-5 h-5 mr-3 text-red-500 shrink-0" />
-                <span className="font-medium">{error}</span>
-              </div>
-            )}
+        {/* Result & Loading Area (Order 2, sits cleanly between header and input) */}
+        <div className={`w-full max-w-[340px] flex flex-col items-center transition-all duration-700 order-2 origin-top ${hasContent ? "opacity-100 scale-100" : "opacity-0 scale-95 h-0 overflow-hidden"}`}>
+          
+          {/* Error Message */}
+          {error && (
+            <div className="w-full bg-red-50 text-red-600 px-5 py-4 rounded-2xl border border-red-100 text-sm flex items-center justify-center animate-in fade-in slide-in-from-top-4 shadow-sm mb-4">
+              <AlertCircle className="w-5 h-5 mr-2 text-red-500 shrink-0" />
+              <span className="font-medium text-center">{error}</span>
+            </div>
+          )}
 
-            {/* In-Place Skeleton when fetching */}
-            {loading && !error && (
-              <div className="w-full max-w-lg glass-card flex flex-col items-center p-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
-                <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-6" />
-                <div className="w-48 h-64 rounded-xl shimmer-light shrink-0 mb-6 shadow-sm border border-gray-100"></div>
-                <div className="w-3/4 h-5 rounded-md shimmer-light mb-8"></div>
-                <div className="w-full space-y-3">
-                  <div className="w-full h-12 rounded-xl shimmer-light"></div>
-                  <div className="w-full h-12 rounded-xl shimmer-light"></div>
+          {/* Premium Skeleton Loading */}
+          {loading && !error && (
+            <div className="w-full glass-card flex flex-col p-4 animate-in fade-in zoom-in-95 duration-500 border border-white/60">
+              <div className="w-full aspect-[9/16] rounded-xl shimmer-light overflow-hidden mb-4 relative shadow-inner">
+                {/* Simulated center floating loader icon */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="w-10 h-10 text-blue-400 animate-spin opacity-50" />
                 </div>
               </div>
-            )}
+              <div className="flex gap-3 w-full">
+                <div className="h-12 w-1/2 rounded-xl shimmer-light" />
+                <div className="h-12 w-1/2 rounded-xl shimmer-light" />
+              </div>
+            </div>
+          )}
 
-            {/* Actual Result Section */}
-            {result && !loading && !error && (
-              <div className="w-full max-w-lg glass-card flex flex-col items-center p-6 animate-in fade-in slide-in-from-bottom-8 shadow-xl border-blue-100/50 bg-white/90">
-                
-                {/* Beautifully Fit Video Thumbnail */}
-                <div className="relative w-full aspect-[4/5] sm:aspect-video md:aspect-[4/3] max-h-[400px] bg-gray-50 rounded-2xl overflow-hidden flex shrink-0 items-center justify-center border border-gray-200 mb-5 shadow-inner">
-                  {result.cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img 
-                      src={result.cover} 
-                      alt="Video cover" 
-                      className="object-contain w-full h-full backdrop-blur-sm" 
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <Image src="/logo.png" alt="Placeholder" width={60} height={60} className="opacity-20 grayscale" />
-                    </div>
-                  )}
-                  {/* Subtle overlay gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent flex items-end justify-center p-4 pointer-events-none">
-                     <p className="text-white font-semibold text-sm drop-shadow-md pb-2 tracking-wide text-center px-4 line-clamp-2">
-                       {result.title || "Ready to download"}
-                     </p>
+          {/* Actual Video Result */}
+          {result && !loading && !error && (
+            <div className="w-full glass-card flex flex-col p-4 animate-in fade-in zoom-in-95 duration-700 shadow-2xl border-white bg-white/95">
+              
+              {/* 9:16 Video Thumbnail strictly bounded */}
+              <div className="relative w-full aspect-[9/16] max-h-[45vh] bg-black/5 rounded-xl overflow-hidden shadow-inner flex shrink-0 items-center justify-center border border-gray-100 mb-4 group">
+                {result.cover ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img 
+                    src={result.cover} 
+                    alt="Video thumbnail" 
+                    className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105" 
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                    <Image src="/logo.png" alt="Fallback" width={40} height={40} className="opacity-20 grayscale" />
                   </div>
-                </div>
-                
-                {/* Download Actions */}
-                <div className="w-full flex flex-col gap-3">
-                  {/* HD Video Download */}
-                  {result.hd_url && (
-                    <a 
-                      href={result.hd_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="w-full flex items-center justify-center py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/25 transition-all active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-blue-500/50"
-                    >
-                      <Download className="w-5 h-5 mr-2" /> Download without watermark
-                    </a>
-                  )}
-                  
-                  {/* MP3 Audio Download */}
-                  {result.mp3_url && (
-                    <a 
-                      href={result.mp3_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="w-full flex items-center justify-center py-3.5 px-6 bg-white hover:bg-gray-50 text-gray-800 font-bold rounded-2xl border-2 border-gray-200 shadow-sm transition-all active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-gray-200"
-                    >
-                      <Music className="w-5 h-5 mr-2 text-pink-500" /> Download mp3
-                    </a>
-                  )}
+                )}
+                {/* Gradient overlay for text */}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent pt-12 pb-3 px-4 pointer-events-none">
+                  <p className="text-white font-medium text-sm drop-shadow-md line-clamp-2 leading-snug">
+                    {result.title || "Ready to save"}
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
+              
+              {/* Download Action Buttons */}
+              <div className="w-full flex gap-3 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 fill-mode-both">
+                {/* Video Button */}
+                <a 
+                  href={result.hd_url || result.sd_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/25 transition-all active:scale-[0.98]"
+                >
+                  <Download className="w-5 h-5 mb-1" />
+                  <span className="text-xs">Video</span>
+                </a>
+                
+                {/* MP3 Audio Button */}
+                {result.mp3_url && (
+                  <a 
+                    href={result.mp3_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl shadow-md shadow-pink-500/25 transition-all active:scale-[0.98]"
+                  >
+                    <Music className="w-5 h-5 mb-1 text-pink-100" />
+                    <span className="text-xs">MP3 Audio</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>
