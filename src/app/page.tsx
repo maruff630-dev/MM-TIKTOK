@@ -2,23 +2,17 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Download, Link as LinkIcon, Loader2, CheckCircle, Copy, ClipboardPaste } from "lucide-react";
+import { Download, Link as LinkIcon, Loader2, CheckCircle, ClipboardPaste, Music } from "lucide-react";
 import axios from "axios";
-import NavbarSkeleton from "@/components/skeletons/NavbarSkeleton";
-import StoriesSkeleton from "@/components/skeletons/StoriesSkeleton";
-import VideoFeedSkeleton from "@/components/skeletons/VideoFeedSkeleton";
-import ProfileSkeleton from "@/components/skeletons/ProfileSkeleton";
 
 export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
 
-  const handleDownload = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!url.trim()) {
+  const processDownload = async (linkToDownload: string) => {
+    if (!linkToDownload.trim()) {
       setError("Please put a valid TikTok URL");
       return;
     }
@@ -28,7 +22,7 @@ export default function Home() {
     setResult(null);
 
     try {
-      const response = await axios.post("/api/download", { url });
+      const response = await axios.post("/api/download", { url: linkToDownload });
       
       if (response.data.status === "success") {
         setResult(response.data.data);
@@ -42,190 +36,169 @@ export default function Home() {
     }
   };
 
-  const copyToClipboard = () => {
-    if (result?.hd_url) {
-      navigator.clipboard.writeText(result.hd_url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    processDownload(url);
   };
 
-  const handlePaste = async () => {
+  const handlePasteAndDownload = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      setUrl(text);
-      if (text.includes("tiktok.com")) {
-        // Auto-trigger if valid link is pasted
-        setTimeout(() => handleDownload(), 100);
+      if (text) {
+        setUrl(text);
+        processDownload(text);
       }
     } catch (err) {
       console.log("Failed to paste", err);
+      // Fallback if clipboard access is denied
+      if (url) processDownload(url);
+      else setError("Clipboard access denied. Please paste manually and hit Enter.");
     }
   };
 
   return (
-    <main className="flex flex-col min-h-screen relative overflow-hidden bg-[#050505]">
-      {/* Background Social App Skeletons (Decorative) */}
-      <div className="absolute inset-0 pointer-events-none z-0 flex flex-col blur-[1px] opacity-40">
-        <NavbarSkeleton />
-        <div className="flex flex-1 mt-4 px-4 overflow-hidden gap-12 justify-center">
-          {/* Left Column Feed */}
-          <div className="hidden lg:flex flex-col items-end gap-8 w-1/3">
-            <StoriesSkeleton />
-            <div className="scale-90 origin-top-right">
-              <VideoFeedSkeleton />
-            </div>
-          </div>
-          {/* Center Space for main box */}
-          <div className="hidden md:flex flex-col w-1/3 opacity-20 transform -translate-y-12">
-            <VideoFeedSkeleton />
-          </div>
-          {/* Right Column Profile */}
-          <div className="hidden lg:flex flex-col items-start gap-8 w-1/3 pt-12">
-            <ProfileSkeleton />
-            <div className="w-full max-w-sm aspect-video bg-[#121212] rounded-2xl shimmer-dark" />
-          </div>
-        </div>
-      </div>
+    <main className="flex flex-col min-h-[100dvh] relative overflow-hidden items-center justify-center p-4">
+      {/* Background Decorative Blob */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-300/30 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-300/30 blur-[120px] pointer-events-none" />
 
-      {/* Main Foreground Interface */}
-      <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 py-12 md:py-24 animate-in fade-in duration-1000">
+      {/* Main Foreground Container */}
+      <div className="relative z-10 w-full max-w-3xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-700">
         
-        {/* Central Hero text */}
-        <div className="flex flex-col items-center mb-10 text-center animate-float">
-          <div className="relative w-24 h-24 drop-shadow-[0_0_30px_rgba(168,85,247,0.4)] mb-6 transition-transform hover:scale-105 duration-300">
+        {/* Header Text & Logo */}
+        <div className="flex flex-col items-center mb-8 text-center animate-float">
+          <div className="relative w-16 h-16 drop-shadow-xl mb-4 transition-transform hover:scale-105 duration-300">
             <Image 
               src="/logo.png" 
               alt="MM TIKTOK Logo" 
               fill 
+              sizes="(max-width: 768px) 64px, 64px"
               className="object-contain" 
               priority
             />
           </div>
-          <h1 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 tracking-tight leading-tight mb-4">
-            Download the Trend
+          <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight mb-3">
+            Download TikTok Videos Free
           </h1>
-          <p className="text-gray-400 font-medium text-lg md:text-xl max-w-lg mb-2">
-            Save TikTok videos in ultra HD <span className="text-white font-bold">without watermarks</span> instantly.
-          </p>
-          <p className="text-gray-500 text-sm max-w-md">
-            Fast, secure, and 100% free. Experience the most premium TikTok downloader built for creators.
+          <p className="text-gray-600 font-medium text-base md:text-lg max-w-xl">
+            The fastest tool to save TikTok videos in <span className="text-blue-600 font-bold">Ultra HD without watermark</span> and get MP3 audio instantly.
           </p>
         </div>
 
         {/* Action Window */}
-        <div className="w-full max-w-2xl flex flex-col items-center gap-6">
+        <div className="w-full flex flex-col items-center gap-6">
           
-          {/* Input Box */}
+          {/* Central Input Box */}
           <form 
-            onSubmit={handleDownload} 
-            className="w-full relative glass-card p-2 md:p-3 flex items-center gap-2 group hover:border-white/20 transition-all duration-500 shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+            onSubmit={handleManualSubmit} 
+            className="w-full relative glass-card p-2 flex items-center gap-2 group hover:border-blue-200 transition-all duration-300 shadow-[0_10px_40px_rgba(37,99,235,0.08)] bg-white/80"
           >
-            <div className="pl-4 hidden sm:flex">
-              <LinkIcon className="text-purple-400 w-6 h-6 animate-pulse" />
+            <div className="pl-3 hidden sm:flex">
+              <LinkIcon className="text-blue-500 w-5 h-5" />
             </div>
             
             <input 
               type="url" 
               placeholder="Paste your TikTok link here..." 
-              className="flex-1 bg-transparent px-4 py-3 md:py-4 outline-none text-white placeholder:text-gray-500 font-medium text-lg min-w-0"
+              className="flex-1 bg-transparent px-3 py-3 outline-none text-gray-800 placeholder:text-gray-400 font-medium text-base md:text-lg min-w-0"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               disabled={loading}
             />
 
-            {/* Paste Button (Visible when empty) */}
-            {!url && (
-              <button
-                type="button"
-                onClick={handlePaste}
-                title="Paste Link"
-                className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium transition-colors border border-white/5"
-              >
-                <ClipboardPaste className="w-4 h-4" />
-                Paste
-              </button>
-            )}
-            
-            <button 
-              type="submit" 
+            {/* Paste/Download Button */}
+            <button
+              type="button"
+              onClick={handlePasteAndDownload}
               disabled={loading}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-6 md:px-8 py-3.5 md:py-4 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(236,72,153,0.3)] active:scale-[0.96] disabled:opacity-70 disabled:grayscale flex items-center justify-center min-w-[3.5rem] md:min-w-[10rem]"
+              title="Paste & Download"
+              className="flex items-center gap-2 px-4 md:px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-[0.96] disabled:opacity-70 disabled:grayscale shrink-0"
             >
               {loading ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  <span className="hidden md:inline text-lg">Download</span>
-                  <Download className="w-6 h-6 md:hidden" />
+                  <ClipboardPaste className="w-5 h-5" />
+                  <span className="hidden sm:inline">Paste</span>
                 </>
               )}
             </button>
           </form>
 
           {/* Validation/Feedback Area */}
-          <div className="w-full min-h-[160px] flex justify-center w-full max-w-2xl">
+          <div className="w-full flex justify-center">
             {/* Error Message */}
             {error && (
-              <div className="w-full bg-red-950/50 text-red-400 px-5 py-4 rounded-2xl border border-red-900/50 text-sm flex items-center justify-center animate-in fade-in slide-in-from-top-4 shadow-xl">
+              <div className="w-full bg-red-50 text-red-600 px-5 py-3 rounded-2xl border border-red-100 text-sm flex items-center justify-center animate-in fade-in slide-in-from-top-4 shadow-sm">
                 <CheckCircle className="w-5 h-5 mr-3 text-red-500 shrink-0" />
                 <span className="font-medium">{error}</span>
               </div>
             )}
 
-            {/* In-Place Skeletons when fetching */}
+            {/* In-Place Skeleton when fetching */}
             {loading && !error && (
-              <div className="w-full glass-card animate-in fade-in slide-in-from-bottom-6">
-                <div className="flex items-center space-x-4 mb-8">
-                  <div className="w-20 h-28 rounded-xl shimmer-dark shrink-0"></div>
-                  <div className="space-y-4 w-full">
-                    <div className="h-6 rounded-md shimmer-dark w-3/4"></div>
-                    <div className="h-4 rounded-md shimmer-dark w-1/2"></div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="h-14 rounded-xl shimmer-dark w-full bg-purple-900/10"></div>
-                  <div className="h-14 rounded-xl shimmer-dark w-full bg-purple-900/10"></div>
+              <div className="w-full max-w-lg glass-card flex flex-col items-center p-8 animate-in fade-in slide-in-from-bottom-6 duration-500">
+                <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-6" />
+                <div className="w-48 h-64 rounded-xl shimmer-light shrink-0 mb-6 shadow-sm border border-gray-100"></div>
+                <div className="w-3/4 h-5 rounded-md shimmer-light mb-8"></div>
+                <div className="w-full space-y-3">
+                  <div className="w-full h-12 rounded-xl shimmer-light"></div>
+                  <div className="w-full h-12 rounded-xl shimmer-light"></div>
                 </div>
               </div>
             )}
 
             {/* Actual Result Section */}
             {result && !loading && !error && (
-              <div className="w-full glass-card animate-in fade-in slide-in-from-bottom-8 flex flex-col md:flex-row gap-6 shadow-2xl border-purple-500/20">
+              <div className="w-full max-w-lg glass-card flex flex-col items-center p-6 animate-in fade-in slide-in-from-bottom-8 shadow-xl border-blue-100/50 bg-white/90">
                 
-                {/* Video Info Display */}
-                <div className="relative w-full md:w-40 aspect-[9/16] bg-black/60 rounded-xl overflow-hidden flex shrink-0 items-center justify-center border border-white/10 group">
+                {/* Beautifully Fit Video Thumbnail */}
+                <div className="relative w-full aspect-[4/5] sm:aspect-video md:aspect-[4/3] max-h-[400px] bg-gray-50 rounded-2xl overflow-hidden flex shrink-0 items-center justify-center border border-gray-200 mb-5 shadow-inner">
                   {result.cover ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={result.cover} alt="Video cover" className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110" />
+                    <img 
+                      src={result.cover} 
+                      alt="Video cover" 
+                      className="object-contain w-full h-full backdrop-blur-sm" 
+                    />
                   ) : (
-                    <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <Image src="/logo.png" alt="Placeholder" width={60} height={60} className="opacity-20 grayscale" />
+                    </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
-                    <CheckCircle className="w-6 h-6 text-green-400" />
+                  {/* Subtle overlay gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent flex items-end justify-center p-4 pointer-events-none">
+                     <p className="text-white font-semibold text-sm drop-shadow-md pb-2 tracking-wide text-center px-4 line-clamp-2">
+                       {result.title || "Ready to download"}
+                     </p>
                   </div>
                 </div>
                 
                 {/* Download Actions */}
-                <div className="flex-1 flex flex-col justify-center">
-                  <h3 className="font-bold text-gray-200 text-xl line-clamp-2 leading-snug mb-2">{result.title || "TikTok Video"}</h3>
-                  <p className="text-sm text-green-400 mb-6 font-medium flex items-center tracking-wide"><CheckCircle className="w-4 h-4 mr-1.5" /> High Quality Ready</p>
-                  
-                  <div className="flex flex-col gap-3">
-                    <a href={result.hd_url || result.sd_url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center py-4 px-6 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow-lg shadow-purple-900/50 transition-all active:scale-[0.98]">
-                      <Download className="w-5 h-5 mr-3" /> Save Video (No Watermark)
+                <div className="w-full flex flex-col gap-3">
+                  {/* HD Video Download */}
+                  {result.hd_url && (
+                    <a 
+                      href={result.hd_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="w-full flex items-center justify-center py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/25 transition-all active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-blue-500/50"
+                    >
+                      <Download className="w-5 h-5 mr-2" /> Download without watermark
                     </a>
-                    {result.sd_url && (
-                      <a href={result.sd_url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center py-3.5 px-4 bg-white/5 hover:bg-white/10 text-gray-300 font-semibold rounded-xl border border-white/10 transition-all active:scale-[0.98]">
-                        Download Standard Quality
-                      </a>
-                    )}
-                    <button onClick={copyToClipboard} className="w-full flex items-center justify-center py-3.5 px-4 bg-transparent hover:bg-white/5 text-gray-400 hover:text-white font-medium rounded-xl transition-all border border-transparent">
-                      {copied ? <CheckCircle className="w-5 h-5 mr-2 text-green-400" /> : <Copy className="w-5 h-5 mr-2" />}
-                      {copied ? "Direct Link Copied!" : "Copy URL"}
-                    </button>
-                  </div>
+                  )}
+                  
+                  {/* MP3 Audio Download */}
+                  {result.mp3_url && (
+                    <a 
+                      href={result.mp3_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="w-full flex items-center justify-center py-3.5 px-6 bg-white hover:bg-gray-50 text-gray-800 font-bold rounded-2xl border-2 border-gray-200 shadow-sm transition-all active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-gray-200"
+                    >
+                      <Music className="w-5 h-5 mr-2 text-pink-500" /> Download mp3
+                    </a>
+                  )}
                 </div>
               </div>
             )}

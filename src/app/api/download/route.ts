@@ -32,9 +32,9 @@ export async function POST(req: Request) {
         data: {
           title: scraperData.data.title,
           cover: scraperData.data.cover,
-          // API returns relative domains sometimes or full URLs in `play`
           sd_url: scraperData.data.play,
           hd_url: scraperData.data.hdplay || scraperData.data.play,
+          mp3_url: scraperData.data.music,
         },
       });
     } else {
