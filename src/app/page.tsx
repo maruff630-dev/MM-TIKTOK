@@ -107,14 +107,14 @@ export default function Home() {
           <ArrowLeft className="w-6 h-6" />
         </button>
         
-        {/* Animated Glowing Logo */}
-        <div className="relative w-10 h-10 drop-shadow-[0_0_12px_rgba(59,130,246,0.5)] animate-pulse transition-transform hover:scale-110">
+        {/* Logo (No glow) */}
+        <div className="relative w-10 h-10 transition-transform hover:scale-110">
           <Image 
             src="/logo.png" 
             alt="MM TIKTOK Logo" 
             fill 
             sizes="40px"
-            className="object-contain" 
+            className="object-contain drop-shadow-sm" 
             priority
           />
         </div>
@@ -170,43 +170,62 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Central Input Box (Moves below result if hasContent) */}
-        <div className={`w-full max-w-2xl flex flex-col items-center transition-all duration-700 ${hasContent ? "order-last mt-8 opacity-80 hover:opacity-100" : "order-2"}`}>
-          <form 
-            onSubmit={handleManualSubmit} 
-            className="w-full relative glass-card p-2 flex items-center gap-2 transition-all duration-500 shadow-[0_10px_40px_rgba(37,99,235,0.08)] bg-white/90 border border-blue-100 hover:border-blue-300"
-          >
-            <div className="pl-3 hidden sm:flex">
-              <LinkIcon className="text-blue-500 w-5 h-5 flex-shrink-0" />
-            </div>
-            
-            <input 
-              type="url" 
-              placeholder="Paste TikTok link here..." 
-              className="flex-1 bg-transparent px-3 py-3 outline-none text-gray-800 placeholder:text-gray-400 font-medium text-base min-w-0"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={loading}
-            />
-
-            {/* Combined Paste & Download Button */}
-            <button
-              type="button"
-              onClick={handlePasteAndDownload}
-              disabled={loading}
-              title="Paste & Download"
-              className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-[0.96] disabled:opacity-70 flex-shrink-0 min-w-[120px]"
+        {/* Central Input Box or Reboot Button */}
+        <div className={`w-full max-w-2xl flex flex-col items-center transition-all duration-700 ${hasContent ? "order-last mt-10" : "order-2"}`}>
+          
+          {!hasContent ? (
+            <form 
+              onSubmit={handleManualSubmit} 
+              className="w-full relative glass-card p-2 flex items-center gap-2 transition-all duration-500 shadow-[0_10px_40px_rgba(37,99,235,0.08)] bg-white/90 border border-blue-100 hover:border-blue-300"
             >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <>
-                  <ClipboardPaste className="w-5 h-5" />
-                  <span>Paste</span>
-                </>
-              )}
+              <div className="pl-3 hidden sm:flex">
+                <LinkIcon className="text-blue-500 w-5 h-5 flex-shrink-0" />
+              </div>
+              
+              <input 
+                type="url" 
+                placeholder="Paste TikTok link here..." 
+                className="flex-1 bg-transparent px-3 py-3 outline-none text-gray-800 placeholder:text-gray-400 font-medium text-base min-w-0"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={loading}
+              />
+
+              <button
+                type="button"
+                onClick={handlePasteAndDownload}
+                disabled={loading}
+                title="Paste & Download"
+                className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-[0.96] disabled:opacity-70 flex-shrink-0 min-w-[120px]"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <ClipboardPaste className="w-5 h-5" />
+                    <span>Paste</span>
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            // Beautiful Reset Button shown when content is loaded
+            <button
+              onClick={() => {
+                setUrl("");
+                setResult(null);
+                setLoading(false);
+                setError("");
+              }}
+              className="group relative flex items-center justify-center gap-3 px-8 py-4 bg-white/60 backdrop-blur-md border border-white hover:border-blue-200 text-gray-800 rounded-[2rem] font-bold text-sm md:text-base shadow-sm hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 active:scale-95 animate-in fade-in slide-in-from-bottom-8 overflow-hidden w-full max-w-[340px]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-50/0 via-blue-100/30 to-purple-50/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
+              <div className="p-1.5 bg-blue-100 text-blue-600 rounded-full group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                <LinkIcon className="w-4 h-4" />
+              </div>
+              Download Another Video
             </button>
-          </form>
+          )}
         </div>
 
         {/* Result & Loading Area (Order 2, sits cleanly between header and input) */}

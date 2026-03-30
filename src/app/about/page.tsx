@@ -73,8 +73,8 @@ export default function AboutPage() {
           /* Real Content */
           <>
             <div className="glass-card flex flex-col items-center p-8 text-center bg-white/80 border-white/60 shadow-[0_8px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_40px_rgba(37,99,235,0.08)] transition-all">
-              <div className="relative w-20 h-20 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-pulse mb-6">
-                <Image src="/logo.png" alt="Logo" fill sizes="80px" className="object-contain" priority />
+              <div className="relative w-20 h-20 transition-transform hover:scale-110 mb-6">
+                <Image src="/logo.png" alt="Logo" fill sizes="80px" className="object-contain drop-shadow-sm" priority />
               </div>
               <h1 className="text-3xl font-black text-gray-900 mb-2">MM TIKTOK</h1>
               <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full tracking-wide">Version 1.0.0</span>
