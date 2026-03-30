@@ -98,3 +98,15 @@
 .animate-float {
   animation: float 5s ease-in-out infinite;
 }
+
+@keyframes bounceSpin {
+  0%, 90% { transform: translateY(0) rotate(0deg); }
+  92% { transform: translateY(-15px) rotate(180deg); }
+  95% { transform: translateY(0) rotate(360deg); }
+  97% { transform: translateY(-5px) rotate(360deg); }
+  100% { transform: translateY(0) rotate(360deg); }
+}
+
+.animate-bounce-spin-delay {
+  animation: bounceSpin 15s ease-in-out infinite;
+}

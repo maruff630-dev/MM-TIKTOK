@@ -11,6 +11,7 @@ export default function Home() {
   const [downloadingType, setDownloadingType] = useState<"video" | "mp3" | null>(null);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const processDownload = async (linkToDownload: string) => {
     if (!linkToDownload.trim()) {
@@ -118,9 +119,38 @@ export default function Home() {
           />
         </div>
         
-        <button className="p-2 rounded-full hover:bg-black/5 transition-all text-gray-700 active:scale-95">
-          <Menu className="w-6 h-6" />
-        </button>
+        {/* Menu Wrapper */}
+        <div className="relative">
+          <button 
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="p-2 rounded-full hover:bg-black/5 transition-all text-gray-700 active:scale-95"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+          
+          {/* Dropdown Menu */}
+          {isMenuOpen && (
+            <>
+              {/* Invisible overlay to close menu by clicking outside */}
+              <div className="fixed inset-0 z-[40]" onClick={() => setIsMenuOpen(false)} />
+              <div className="absolute top-full right-0 mt-2 w-56 glass-card p-2 flex flex-col gap-1 z-[50] animate-in slide-in-from-top-2 fade-in duration-200">
+                <a href="/" className="w-full px-4 py-3 rounded-xl font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                  Home / Download
+                </a>
+                <a href="/about" className="w-full px-4 py-3 rounded-xl font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                  About Us
+                </a>
+                <a href="/policy" className="w-full px-4 py-3 rounded-xl font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                  Privacy Policy
+                </a>
+                <div className="h-px bg-gray-200 my-1 mx-2" />
+                <div className="px-4 py-2 text-xs font-semibold text-gray-400 text-center">
+                  Version 1.0.0
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </nav>
 
       {/* Background Decorative Blob */}
@@ -245,7 +275,7 @@ export default function Home() {
                     {downloadingType === "video" ? (
                       <Loader2 className="w-6 h-6 animate-spin" />
                     ) : (
-                      <Download className="w-6 h-6 group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300 animate-float" />
+                      <Download className="w-6 h-6 animate-bounce-spin-delay group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300" />
                     )}
                   </button>
                   <span className="text-sm font-bold text-gray-700">Video</span>
@@ -262,7 +292,7 @@ export default function Home() {
                       {downloadingType === "mp3" ? (
                         <Loader2 className="w-6 h-6 animate-spin" />
                       ) : (
-                        <Music className="w-6 h-6 group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300 animate-float" style={{ animationDelay: "1s" }} />
+                        <Music className="w-6 h-6 animate-bounce-spin-delay group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300" style={{ animationDelay: "2s" }} />
                       )}
                     </button>
                     <span className="text-sm font-bold text-gray-700">MP3</span>
