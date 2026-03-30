@@ -13,6 +13,7 @@ export default function Home() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [result, setResult] = useState<any>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isCreatingVideo, setIsCreatingVideo] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState<{message: string, type: "loading" | "success"} | null>(null);
 
@@ -118,6 +119,134 @@ export default function Home() {
       setToast(null);
     } finally {
       setDownloadingType(null);
+    }
+  };
+
+  // ─── Client-side Slideshow → Video Generator ───────────────────────────────
+  const createVideoFromImages = async () => {
+    if (!result?.images?.length || !result?.mp3_url) return;
+    setIsCreatingVideo(true);
+    setToast(null);
+    await new Promise(r => setTimeout(r, 60));
+    showToast("Image Crafting... Please wait", "loading");
+
+    const blobUrls: string[] = [];
+    try {
+      const images: string[] = result.images;
+      const audioSrcUrl: string = result.mp3_url;
+      const numImages = images.length;
+
+      // 1 — Fetch audio and decode to get precise duration
+      const audioResp = await fetch(`/api/proxy?url=${encodeURIComponent(audioSrcUrl)}&filename=audio.mp3`);
+      const audioBuffer = await audioResp.arrayBuffer();
+      const helperCtx = new AudioContext();
+      const decoded = await helperCtx.decodeAudioData(audioBuffer.slice(0));
+      const audioDuration = decoded.duration;
+      await helperCtx.close();
+
+      const secsPerImage = numImages > 1 ? audioDuration / numImages : audioDuration;
+
+      // 2 — Fetch every image as a same-origin blob URL (avoids canvas CORS taint)
+      for (let i = 0; i < numImages; i++) {
+        showToast(`Fetching image ${i + 1}/${numImages}...`, "loading");
+        const r2 = await fetch(`/api/proxy?url=${encodeURIComponent(images[i])}&filename=img_${i}.jpg`);
+        const b = await r2.blob();
+        blobUrls.push(URL.createObjectURL(b));
+      }
+
+      // 3 — Load as HTMLImageElement
+      const htmlImages = await Promise.all(
+        blobUrls.map(src => new Promise<HTMLImageElement>((res2, rej) => {
+          const img = new Image();
+          img.onload = () => res2(img);
+          img.onerror = rej;
+          img.src = src;
+        }))
+      );
+
+      showToast("Image Crafting... Please wait", "loading");
+
+      // 4 — Canvas 9:16 vertical
+      const W = 720, H = 1280;
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx2d = canvas.getContext("2d")!;
+
+      // 5 — AudioContext: decode audio for playback into MediaStream
+      const ac = new AudioContext();
+      const decodedMain = await ac.decodeAudioData(audioBuffer);
+      const audioDest = ac.createMediaStreamDestination();
+      const srcNode = ac.createBufferSource();
+      srcNode.buffer = decodedMain;
+      srcNode.connect(audioDest);
+
+      // 6 — Combined MediaStream: canvas video + audio
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const captureStream: MediaStream = (canvas as any).captureStream(25);
+      const combined = new MediaStream([
+        ...captureStream.getVideoTracks(),
+        ...audioDest.stream.getAudioTracks(),
+      ]);
+
+      const mime = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"].find(
+        m => MediaRecorder.isTypeSupported(m)
+      ) || "video/webm";
+
+      const recorder = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: 2_500_000 });
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunks.push(ev.data); };
+
+      // Draw first frame before starting so the recorder captures something immediately
+      ctx2d.fillStyle = "#000";
+      ctx2d.fillRect(0, 0, W, H);
+      ctx2d.drawImage(htmlImages[0], 0, 0, W, H);
+
+      recorder.start(500);
+      srcNode.start(0);
+
+      // 7 — Draw each image for secsPerImage seconds
+      for (let i = 0; i < htmlImages.length; i++) {
+        const img = htmlImages[i];
+        // Cover-fit the image on the canvas
+        const ir = img.naturalWidth / img.naturalHeight;
+        const cr = W / H;
+        let dw = W, dh = H, dx = 0, dy = 0;
+        if (ir > cr) { dh = H; dw = H * ir; dx = -(dw - W) / 2; }
+        else         { dw = W; dh = W / ir;  dy = -(dh - H) / 2; }
+        ctx2d.fillStyle = "#000";
+        ctx2d.fillRect(0, 0, W, H);
+        ctx2d.drawImage(img, dx, dy, dw, dh);
+        await new Promise(r => setTimeout(r, secsPerImage * 1000));
+      }
+
+      recorder.stop();
+      ac.close();
+
+      const videoBlob = await new Promise<Blob>(res3 => {
+        recorder.onstop = () => res3(new Blob(chunks, { type: mime }));
+      });
+
+      // 8 — Trigger download
+      const titleClean = result?.title
+        ? result.title.substring(0, 12).replace(/[^a-zA-Z0-9]/g, "_")
+        : "Slideshow";
+      const dlUrl = URL.createObjectURL(videoBlob);
+      const a = document.createElement("a");
+      a.href = dlUrl;
+      a.download = `MM_TIKTOK_${titleClean}_slides.webm`;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(dlUrl); document.body.removeChild(a); }, 400);
+
+      showToast("Video Created! Check Downloads ✓", "success");
+    } catch (err2) {
+      console.error("Video creation failed", err2);
+      showToast("Crafting failed. Try again.", "success");
+    } finally {
+      blobUrls.forEach(u => URL.revokeObjectURL(u));
+      setIsCreatingVideo(false);
     }
   };
 
@@ -338,15 +467,19 @@ export default function Home() {
               {/* Download Action Buttons */}
               <div className="w-full flex justify-center gap-6 sm:gap-10 mt-5 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 fill-mode-both flex-wrap">
                 
-                {/* Video Button Column (Native stitched video usually provided by TikTok API even for photo slides) */}
-                {(result.hd_url || result.sd_url) && (
+                {/* Video Button Column */}
+                {(result.hd_url || result.sd_url || (result.images && result.images.length > 0)) && (
                   <div className="flex flex-col items-center gap-2">
                     <button 
-                      onClick={() => handleDownloadFile(result.hd_url || result.sd_url, "video")}
-                      disabled={downloadingType !== null}
+                      onClick={() =>
+                        result.images && result.images.length > 0
+                          ? createVideoFromImages()
+                          : handleDownloadFile(result.hd_url || result.sd_url, "video")
+                      }
+                      disabled={downloadingType !== null || isCreatingVideo}
                       className="w-14 h-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-[0_8px_25px_rgba(37,99,235,0.4)] transition-all active:scale-[0.92] disabled:opacity-70 disabled:scale-100 group"
                     >
-                      {downloadingType === "video" ? (
+                      {(downloadingType === "video" || isCreatingVideo) ? (
                         <Loader2 className="w-6 h-6 animate-spin" />
                       ) : (
                         <Download className="w-6 h-6 group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300" />
