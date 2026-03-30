@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import Image from "next/image";
 import { Download, Link as LinkIcon, Loader2, CheckCircle, ClipboardPaste, Music, AlertCircle, ArrowLeft, Menu } from "lucide-react";
