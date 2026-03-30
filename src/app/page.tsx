@@ -305,14 +305,29 @@ export default function Home() {
               />
 
               <button
-                type="button"
-                onClick={handlePasteAndDownload}
+                type="submit"
+                onClick={(e) => {
+                  // If URL already has content (manually typed/pasted), submit directly
+                  if (url.trim()) {
+                    e.preventDefault();
+                    processDownload(url);
+                  } else {
+                    // Empty field: read from clipboard
+                    e.preventDefault();
+                    handlePasteAndDownload();
+                  }
+                }}
                 disabled={loading}
-                title="Paste & Download"
+                title={url.trim() ? "Download" : "Paste & Download"}
                 className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-lg shadow-blue-500/30 active:scale-[0.96] disabled:opacity-70 flex-shrink-0 min-w-[120px]"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
+                ) : url.trim() ? (
+                  <>
+                    <Download className="w-5 h-5" />
+                    <span>Download</span>
+                  </>
                 ) : (
                   <>
                     <ClipboardPaste className="w-5 h-5" />
