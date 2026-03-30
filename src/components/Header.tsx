@@ -38,8 +38,12 @@ export default function Header({ title, showBack = false }: HeaderProps) {
   };
 
   return (
-    <nav className="fixed top-0 inset-x-0 w-full flex items-center justify-between p-4 px-4 sm:px-6 z-[100] glass">
-      <div className="flex-1 flex justify-start items-center gap-2">
+    <nav className="fixed top-0 inset-x-0 w-full z-[100]">
+      {/* Background container for glass effect so it doesn't clip fixed child elements */}
+      <div className="absolute inset-0 bg-white/70 backdrop-blur-xl border-b border-white/40 shadow-sm pointer-events-none" />
+      
+      <div className="relative w-full h-full flex items-center justify-between p-4 px-4 sm:px-6 z-10">
+        <div className="flex-1 flex justify-start items-center gap-2">
         {showBack && (
           <button 
             onClick={() => router.back()} 
@@ -115,6 +119,7 @@ export default function Header({ title, showBack = false }: HeaderProps) {
           </>
         )}
       </div>
+     </div>
     </nav>
   );
 }
