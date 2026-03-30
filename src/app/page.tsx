@@ -59,36 +59,24 @@ export default function Home() {
     }
   };
 
-  const handleDownloadFile = async (fileUrl: string, type: "video" | "mp3") => {
+  const handleDownloadFile = (fileUrl: string, type: "video" | "mp3") => {
     setDownloadingType(type);
     try {
-      const response = await fetch("/api/proxy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          url: fileUrl, 
-          filename: `MM_TIKTOK_${result?.title ? result.title.substring(0, 10) : "Download"}.${type === "video" ? "mp4" : "mp3"}` 
-        })
-      });
-
-      if (!response.ok) throw new Error("Network response was not ok");
+      // Create a clean filename
+      const titleClean = result?.title ? result.title.substring(0, 12).replace(/[^a-zA-Z0-9]/g, '_') : "Media";
+      const filename = `MM_TIKTOK_${titleClean}.${type === "video" ? "mp4" : "mp3"}`;
       
-      const blob = await response.blob();
-      const tempUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.style.display = "none";
-      a.href = tempUrl;
-      a.download = `MM_TIKTOK_${result?.title ? result.title.substring(0, 10) : "Download"}.${type === "video" ? "mp4" : "mp3"}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(tempUrl);
-      document.body.removeChild(a);
+      // Navigate to the edge streaming proxy which sends 'Content-Disposition: attachment'
+      // This bypasses JS ArrayBuffer limits and triggers the native iOS/Android download manager seamlessly.
+      const proxyUrl = `/api/proxy?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename)}`;
+      window.location.href = proxyUrl;
+      
     } catch (err) {
-      console.error("Failed to download file", err);
-      // Fallback: open in new tab if blob fails
+      console.error("Failed to route to download proxy", err);
       window.open(fileUrl, "_blank");
     } finally {
-      setDownloadingType(null);
+      // Revert button spinning state after the native download manager prompt appears
+      setTimeout(() => setDownloadingType(null), 2500);
     }
   };
 
