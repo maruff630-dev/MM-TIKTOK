@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     if(filename) downloadUrl.searchParams.set("filename", filename);
     
     return GET(new Request(downloadUrl.toString()));
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Invalid POST body" }, { status: 400 });
   }
 }
