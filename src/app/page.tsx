@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Link as LinkIcon, Loader2, ClipboardPaste, Music, AlertCircle } from "lucide-react";
+import { Download, Link as LinkIcon, Loader2, ClipboardPaste, Music, AlertCircle, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
 import Header from "@/components/Header";
 import TikTokLogo from "@/components/TikTokLogo";
@@ -9,9 +9,10 @@ import TikTokLogo from "@/components/TikTokLogo";
 export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
-  const [downloadingType, setDownloadingType] = useState<"video" | "mp3" | null>(null);
+  const [downloadingType, setDownloadingType] = useState<"video" | "mp3" | "image" | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [result, setResult] = useState<any>(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [error, setError] = useState("");
   const [toast, setToast] = useState<{message: string, type: "loading" | "success"} | null>(null);
 
@@ -31,6 +32,7 @@ export default function Home() {
     setError("");
     setLoading(true);
     setResult(null);
+    setActiveImageIndex(0);
 
     try {
       const response = await axios.post("/api/download", { url: linkToDownload });
@@ -70,13 +72,14 @@ export default function Home() {
     }
   };
 
-  const handleDownloadFile = async (fileUrl: string, type: "video" | "mp3") => {
+  const handleDownloadFile = async (fileUrl: string, type: "video" | "mp3" | "image") => {
     setDownloadingType(type);
     showToast("Downloading... Please wait", "loading");
     
     try {
       const titleClean = result?.title ? result.title.substring(0, 12).replace(/[^a-zA-Z0-9]/g, '_') : "Media";
-      const filename = `MM_TIKTOK_${titleClean}.${type === "video" ? "mp4" : "mp3"}`;
+      const ext = type === "video" ? "mp4" : type === "image" ? "jpg" : "mp3";
+      const filename = `MM_TIKTOK_${titleClean}.${ext}`;
       const proxyUrl = `/api/proxy?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename)}`;
       
       const response = await fetch(proxyUrl);
@@ -243,9 +246,43 @@ export default function Home() {
           {result && !loading && !error && (
             <div className="w-full glass-card flex flex-col p-4 animate-in fade-in zoom-in-95 duration-700 shadow-2xl border-white bg-white/95">
               
-              {/* 9:16 Video Thumbnail strictly bounded */}
+              {/* Result Stage: Video or Photo Carousel bounded strictly */}
               <div className="relative w-full aspect-[9/16] max-h-[45vh] bg-black/5 rounded-xl overflow-hidden shadow-inner flex shrink-0 items-center justify-center border border-gray-100 mb-4 group">
-                {result.cover ? (
+                {result.images && result.images.length > 0 ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={result.images[activeImageIndex]} 
+                      alt={`Slide ${activeImageIndex + 1}`} 
+                      className="object-cover w-full h-full transition-all duration-300" 
+                    />
+                    
+                    {/* Carousel Navigation */}
+                    {result.images.length > 1 && (
+                      <>
+                        {activeImageIndex > 0 && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveImageIndex(p => p - 1); }} 
+                            className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 md:p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md transition-all active:scale-90"
+                          >
+                            <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+                          </button>
+                        )}
+                        {activeImageIndex < result.images.length - 1 && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveImageIndex(p => p + 1); }} 
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 md:p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md transition-all active:scale-90"
+                          >
+                            <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+                          </button>
+                        )}
+                        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs text-white font-bold uppercase tracking-wider shadow-sm">
+                          {activeImageIndex + 1} / {result.images.length}
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : result.cover ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img 
                     src={result.cover} 
@@ -257,8 +294,9 @@ export default function Home() {
                     <TikTokLogo className="w-10 h-10 text-gray-400 opacity-50" />
                   </div>
                 )}
+                
                 {/* Gradient overlay for Author Profile & Title */}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent pt-24 pb-4 px-4 pointer-events-none flex flex-col justify-end">
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/98 via-black/60 to-transparent pt-32 pb-4 px-4 pointer-events-none flex flex-col justify-end">
                   
                   {/* Author Info */}
                   <div className="flex items-center gap-3 mb-2.5">
@@ -288,23 +326,43 @@ export default function Home() {
               </div>
               
               {/* Download Action Buttons */}
-              <div className="w-full flex justify-center gap-10 mt-4 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 fill-mode-both">
+              <div className="w-full flex justify-center gap-6 sm:gap-10 mt-5 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 fill-mode-both flex-wrap">
                 
-                {/* Video Button Column */}
-                <div className="flex flex-col items-center gap-2">
-                  <button 
-                    onClick={() => handleDownloadFile(result.hd_url || result.sd_url, "video")}
-                    disabled={downloadingType !== null}
-                    className="w-14 h-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-[0_8px_25px_rgba(37,99,235,0.4)] transition-all active:scale-[0.92] disabled:opacity-70 disabled:scale-100 group"
-                  >
-                    {downloadingType === "video" ? (
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                    ) : (
-                      <Download className="w-6 h-6 animate-bounce-spin-delay group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300" />
-                    )}
-                  </button>
-                  <span className="text-sm font-bold text-gray-700">Video</span>
-                </div>
+                {/* Video Button Column (Native stitched video usually provided by TikTok API even for photo slides) */}
+                {(result.hd_url || result.sd_url) && (
+                  <div className="flex flex-col items-center gap-2">
+                    <button 
+                      onClick={() => handleDownloadFile(result.hd_url || result.sd_url, "video")}
+                      disabled={downloadingType !== null}
+                      className="w-14 h-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-[0_8px_25px_rgba(37,99,235,0.4)] transition-all active:scale-[0.92] disabled:opacity-70 disabled:scale-100 group"
+                    >
+                      {downloadingType === "video" ? (
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <Download className="w-6 h-6 group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300" />
+                      )}
+                    </button>
+                    <span className="text-sm font-bold text-gray-700">Video</span>
+                  </div>
+                )}
+
+                {/* Specific Image Button Column (Visible only on Photo posts) */}
+                {result.images && result.images.length > 0 && (
+                  <div className="flex flex-col items-center gap-2">
+                    <button 
+                      onClick={() => handleDownloadFile(result.images[activeImageIndex], "image")}
+                      disabled={downloadingType !== null}
+                      className="w-14 h-14 flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-[0_8px_25px_rgba(99,102,241,0.4)] transition-all active:scale-[0.92] disabled:opacity-70 disabled:scale-100 group"
+                    >
+                      {downloadingType === "image" ? (
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <ImageIcon className="w-6 h-6 group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300" />
+                      )}
+                    </button>
+                    <span className="text-sm font-bold text-gray-700">Image</span>
+                  </div>
+                )}
                 
                 {/* MP3 Audio Button Column */}
                 {result.mp3_url && (
@@ -329,15 +387,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Floating Notification Toast */}
+      {/* Floating Notification Toast - compact pill */}
       {toast && (
-        <div className={`fixed bottom-8 sm:bottom-12 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-full flex items-center gap-3 shadow-[0_10px_40px_rgba(0,0,0,0.2)] text-white font-bold animate-in fade-in slide-in-from-bottom-8 duration-300 ${toast.type === "success" ? "bg-green-600 border border-green-500" : "bg-blue-600 border border-blue-500"}`}>
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-4 py-2 rounded-full flex items-center gap-2 shadow-[0_6px_24px_rgba(0,0,0,0.18)] text-white font-semibold whitespace-nowrap animate-in fade-in slide-in-from-bottom-6 duration-300 ${toast.type === "success" ? "bg-green-600 border border-green-500" : "bg-blue-600 border border-blue-500"}`}>
           {toast.type === "loading" ? (
-            <Loader2 className="w-5 h-5 animate-spin text-white" />
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-white flex-shrink-0" />
           ) : (
-            <Download className="w-5 h-5 text-white" />
+            <Download className="w-3.5 h-3.5 text-white flex-shrink-0" />
           )}
-          <span>{toast.message}</span>
+          <span className="text-[12px] leading-none">{toast.message}</span>
         </div>
       )}
     </main>

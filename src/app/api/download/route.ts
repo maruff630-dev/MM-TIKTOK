@@ -42,6 +42,7 @@ export async function POST(req: Request) {
           hd_url: scraperData.data.hdplay || scraperData.data.play,
           mp3_url: scraperData.data.music,
           author: scraperData.data.author,
+          images: scraperData.data.images || [], // Includes HD image URLs for photo posts
         },
       });
     } else {
