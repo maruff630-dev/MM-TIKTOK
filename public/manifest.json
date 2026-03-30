@@ -1,0 +1,22 @@
+{
+  "name": "MM TIKTOK",
+  "short_name": "MM TIKTOK",
+  "description": "Fast, clean, and user-friendly TikTok video downloader.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
