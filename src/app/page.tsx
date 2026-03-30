@@ -1,8 +1,6 @@
-"use client";
-
 import { useState } from "react";
 import Image from "next/image";
-import { Download, Link as LinkIcon, Loader2, CheckCircle, ClipboardPaste, Music, AlertCircle } from "lucide-react";
+import { Download, Link as LinkIcon, Loader2, CheckCircle, ClipboardPaste, Music, AlertCircle, ArrowLeft, Menu } from "lucide-react";
 import axios from "axios";
 
 export default function Home() {
@@ -92,26 +90,46 @@ export default function Home() {
   const hasContent = loading || result || error;
 
   return (
-    <main className="flex flex-col min-h-[100dvh] relative overflow-hidden bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 p-4 pb-12">
+    <main className="flex flex-col min-h-[100dvh] relative overflow-hidden bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 p-4 pb-12 pt-20">
+      
+      {/* Top Header Navigation */}
+      <nav className="absolute top-0 left-0 right-0 w-full flex items-center justify-between p-4 px-6 md:px-8 z-50">
+        <button 
+          onClick={() => {
+            setUrl("");
+            setResult(null);
+          }}
+          className="p-2 rounded-full hover:bg-black/5 transition-all text-gray-700 active:scale-95"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+        
+        {/* Animated Glowing Logo */}
+        <div className="relative w-10 h-10 drop-shadow-[0_0_12px_rgba(59,130,246,0.5)] animate-pulse transition-transform hover:scale-110">
+          <Image 
+            src="/logo.png" 
+            alt="MM TIKTOK Logo" 
+            fill 
+            sizes="40px"
+            className="object-contain" 
+            priority
+          />
+        </div>
+        
+        <button className="p-2 rounded-full hover:bg-black/5 transition-all text-gray-700 active:scale-95">
+          <Menu className="w-6 h-6" />
+        </button>
+      </nav>
+
       {/* Background Decorative Blob */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-300/30 blur-[120px] pointer-events-none transition-all duration-1000" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-300/30 blur-[120px] pointer-events-none transition-all duration-1000" />
 
       {/* Main Foreground Container */}
-      <div className={`relative z-10 w-full max-w-3xl mx-auto flex flex-col items-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${hasContent ? "pt-6 md:pt-10" : "justify-center min-h-[100dvh] -translate-y-8"}`}>
+      <div className={`relative z-10 w-full max-w-3xl mx-auto flex flex-col items-center transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${hasContent ? "pt-2 md:pt-4" : "justify-center min-h-[80dvh] -translate-y-12"}`}>
         
-        {/* Header Text & Logo */}
-        <div className={`flex flex-col items-center text-center transition-all duration-700 ${hasContent ? "scale-90 opacity-90 mb-6" : "scale-100 mb-10"}`}>
-          <div className={`relative transition-all duration-700 ease-out hover:scale-110 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)] animate-pulse ${hasContent ? "w-8 h-8 mb-3" : "w-14 h-14 mb-4"}`}>
-            <Image 
-              src="/logo.png" 
-              alt="MM TIKTOK Logo" 
-              fill 
-              sizes="60px"
-              className="object-contain" 
-              priority
-            />
-          </div>
+        {/* Header Text */}
+        <div className={`flex flex-col items-center text-center transition-all duration-700 ${hasContent ? "scale-90 opacity-90 mb-6 hidden sm:flex" : "scale-100 mb-10"}`}>
           <h1 className={`font-black text-gray-900 tracking-tight transition-all duration-700 ${hasContent ? "text-2xl md:text-3xl mb-1" : "text-4xl md:text-5xl lg:text-6xl mb-3 leading-tight"}`}>
             Download TikTok Free
           </h1>
@@ -213,35 +231,40 @@ export default function Home() {
               </div>
               
               {/* Download Action Buttons */}
-              <div className="w-full flex gap-3 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 fill-mode-both">
-                {/* Video Button */}
-                <button 
-                  onClick={() => handleDownloadFile(result.hd_url || result.sd_url, "video")}
-                  disabled={downloadingType !== null}
-                  className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/25 transition-all active:scale-[0.98] disabled:opacity-70 disabled:scale-100"
-                >
-                  {downloadingType === "video" ? (
-                    <Loader2 className="w-5 h-5 mb-1 animate-spin" />
-                  ) : (
-                    <Download className="w-5 h-5 mb-1" />
-                  )}
-                  <span className="text-xs">Video</span>
-                </button>
+              <div className="w-full flex justify-center gap-10 mt-4 mb-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 fill-mode-both">
                 
-                {/* MP3 Audio Button */}
-                {result.mp3_url && (
+                {/* Video Button Column */}
+                <div className="flex flex-col items-center gap-2">
                   <button 
-                    onClick={() => handleDownloadFile(result.mp3_url, "mp3")}
+                    onClick={() => handleDownloadFile(result.hd_url || result.sd_url, "video")}
                     disabled={downloadingType !== null}
-                    className="flex-1 flex flex-col items-center justify-center py-2.5 px-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-500/25 transition-all active:scale-[0.98] disabled:opacity-70 disabled:scale-100"
+                    className="w-14 h-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-[0_8px_25px_rgba(37,99,235,0.4)] transition-all active:scale-[0.92] disabled:opacity-70 disabled:scale-100 group"
                   >
-                    {downloadingType === "mp3" ? (
-                      <Loader2 className="w-5 h-5 mb-1 animate-spin" />
+                    {downloadingType === "video" ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
                     ) : (
-                      <Music className="w-5 h-5 mb-1" />
+                      <Download className="w-6 h-6 group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300 animate-float" />
                     )}
-                    <span className="text-xs">MP3 Audio</span>
                   </button>
+                  <span className="text-sm font-bold text-gray-700">Video</span>
+                </div>
+                
+                {/* MP3 Audio Button Column */}
+                {result.mp3_url && (
+                  <div className="flex flex-col items-center gap-2">
+                    <button 
+                      onClick={() => handleDownloadFile(result.mp3_url, "mp3")}
+                      disabled={downloadingType !== null}
+                      className="w-14 h-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-[0_8px_25px_rgba(37,99,235,0.4)] transition-all active:scale-[0.92] disabled:opacity-70 disabled:scale-100 group"
+                    >
+                      {downloadingType === "mp3" ? (
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <Music className="w-6 h-6 group-hover:scale-110 group-hover:-translate-y-1 transition-transform duration-300 animate-float" style={{ animationDelay: "1s" }} />
+                      )}
+                    </button>
+                    <span className="text-sm font-bold text-gray-700">MP3</span>
+                  </div>
                 )}
               </div>
             </div>
