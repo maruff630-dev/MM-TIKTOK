@@ -72,14 +72,21 @@ export default function Home() {
     }
   };
 
-  const handleDownloadFile = async (fileUrl: string, type: "video" | "mp3" | "image") => {
+  const handleDownloadFile = async (fileUrl: string, type: "video" | "mp3" | "image", imageIndex?: number) => {
+    // Clear any previous toast immediately so state is clean before starting
+    setToast(null);
     setDownloadingType(type);
+    
+    // Small tick to let React flush the null toast before showing loading, avoiding stale UI
+    await new Promise(r => setTimeout(r, 50));
     showToast("Downloading... Please wait", "loading");
     
     try {
       const titleClean = result?.title ? result.title.substring(0, 12).replace(/[^a-zA-Z0-9]/g, '_') : "Media";
       const ext = type === "video" ? "mp4" : type === "image" ? "jpg" : "mp3";
-      const filename = `MM_TIKTOK_${titleClean}.${ext}`;
+      // Unique filename using timestamp + index so Android doesn't prompt 'Download again?'
+      const uniqueSuffix = type === "image" && imageIndex !== undefined ? `_${imageIndex + 1}` : "";
+      const filename = `MM_TIKTOK_${titleClean}${uniqueSuffix}.${ext}`;
       const proxyUrl = `/api/proxy?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename)}`;
       
       const response = await fetch(proxyUrl);
@@ -88,7 +95,6 @@ export default function Home() {
       const blob = await response.blob();
       const tempUrl = window.URL.createObjectURL(blob);
       
-      // Native anchor download link (forces direct File Save without opening media player overlay)
       const a = document.createElement("a");
       a.style.display = "none";
       a.href = tempUrl;
@@ -97,8 +103,12 @@ export default function Home() {
       document.body.appendChild(a);
       a.click();
       
-      window.URL.revokeObjectURL(tempUrl);
-      document.body.removeChild(a);
+      // Let the click propagate before revoking the blob URL
+      setTimeout(() => {
+        window.URL.revokeObjectURL(tempUrl);
+        document.body.removeChild(a);
+      }, 300);
+      
       showToast("Download Complete!", "success");
       
     } catch (err) {
@@ -350,7 +360,7 @@ export default function Home() {
                 {result.images && result.images.length > 0 && (
                   <div className="flex flex-col items-center gap-2">
                     <button 
-                      onClick={() => handleDownloadFile(result.images[activeImageIndex], "image")}
+                      onClick={() => handleDownloadFile(result.images[activeImageIndex], "image", activeImageIndex)}
                       disabled={downloadingType !== null}
                       className="w-14 h-14 flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-[0_8px_25px_rgba(99,102,241,0.4)] transition-all active:scale-[0.92] disabled:opacity-70 disabled:scale-100 group"
                     >
