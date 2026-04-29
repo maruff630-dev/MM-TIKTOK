@@ -18,46 +18,57 @@ export async function POST(req: Request) {
     const urlMatch = url.match(/(https?:\/\/[^\s]+)/);
     const cleanUrl = urlMatch ? urlMatch[0] : url;
 
-    // Using tikwm API (a popular free TikTok scraping API)
-    const apiUrl = "https://www.tikwm.com/api/";
+    // Use our custom VPS backend instead of tikwm
+    // You should set VPS_BACKEND_URL in your Vercel Environment Variables
+    // Defaulting to localhost:4000 for local testing
+    const vpsBackendUrl = process.env.VPS_BACKEND_URL || "http://localhost:4000";
+    const apiUrl = `${vpsBackendUrl}/api/download`;
     
-    // Tikwm expects urlencoded data or GET params. We'll use axios POST to their API.
-    const response = await axios.post(apiUrl, null, {
-      params: {
-        url: cleanUrl,
-        hd: 1, // Request HD video
-      },
+    // Call the VPS backend
+    // Since processing with yt-dlp and ffmpeg might take time, we wait for the response
+    const response = await axios.post(apiUrl, { url: cleanUrl }, {
+      timeout: 120000 // 2 minutes timeout to wait for the VPS processing
     });
 
     const scraperData = response.data;
 
-    if (scraperData.code === 0 && scraperData.data) {
-      // Success, format response to match our frontend expectations
+    if (scraperData.status === "success" && scraperData.data) {
+      // Success, forward the response formatted by our VPS
       return NextResponse.json({
         status: "success",
         data: {
           title: scraperData.data.title,
           cover: scraperData.data.cover,
-          sd_url: scraperData.data.play,
-          hd_url: scraperData.data.hdplay || scraperData.data.play,
-          mp3_url: scraperData.data.music,
+          sd_url: scraperData.data.sd_url,
+          hd_url: scraperData.data.hd_url,
+          mp3_url: "", // Our VPS currently focuses on video. Add audio logic to VPS if needed.
           author: scraperData.data.author,
-          images: scraperData.data.images || [], // Includes HD image URLs for photo posts
+          images: scraperData.data.images || [], 
         },
       });
     } else {
       return NextResponse.json(
         { 
           status: "error", 
-          message: scraperData.msg || "Failed to find video. Account might be private or link is invalid." 
+          message: scraperData.message || "Failed to process video. Account might be private or link is invalid." 
         },
         { status: 400 }
       );
     }
   } catch (error) {
-    console.error("TikTok API Error:", error instanceof Error ? error.message : String(error));
+    console.error("TikTok VPS API Error:", error instanceof Error ? error.message : String(error));
+    
+    let errorMessage = "Network error or API blocked. Try another link.";
+    if (axios.isAxiosError(error)) {
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = "The download took too long and timed out. Please try again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+    }
+
     return NextResponse.json(
-      { status: "error", message: "Network error or API blocked. Try another link." },
+      { status: "error", message: errorMessage },
       { status: 500 }
     );
   }
