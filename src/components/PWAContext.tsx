@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { DownloadCloud } from "lucide-react";
 
-// Local build version - bump this manually when pushing structural changes
-const APP_VERSION = "1.1.0";
+import packageJson from "../../package.json";
+
+// Local build version - bundled at build time
+const APP_VERSION = packageJson.version;
 
 export default function PWAContext() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
