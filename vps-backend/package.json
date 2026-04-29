@@ -1,6 +1,6 @@
 {
   "name": "tiktok-vps-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Robust TikTok Downloader using yt-dlp and ffmpeg",
   "main": "server.js",
   "scripts": {
