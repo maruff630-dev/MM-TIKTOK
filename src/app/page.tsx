@@ -89,9 +89,15 @@ export default function Home() {
       // Unique filename using timestamp + index so Android doesn't prompt 'Download again?'
       const uniqueSuffix = type === "image" && imageIndex !== undefined ? `_${imageIndex + 1}` : "";
       const filename = `MM_TIKTOK_${titleClean}${uniqueSuffix}.${ext}`;
-      const proxyUrl = `/api/proxy?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename)}`;
-      
-      const response = await fetch(proxyUrl);
+      const response = await fetch("/api/proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: fileUrl,
+          filename: filename,
+          http_headers: result?.http_headers || {}
+        })
+      });
       if (!response.ok) throw new Error("Fetch failed");
       
       const blob = await response.blob();
@@ -116,7 +122,7 @@ export default function Home() {
     } catch (err) {
       console.error("Failed to download file natively", err);
       // Fallback
-      window.location.href = `/api/proxy?url=${encodeURIComponent(fileUrl)}&filename=download.mp4`;
+      window.open(fileUrl, "_blank");
       setToast(null);
     } finally {
       setDownloadingType(null);
@@ -139,7 +145,11 @@ export default function Home() {
       const numImages = images.length;
 
       // 1 — Fetch and decode audio to get duration + raw samples
-      const audioResp = await fetch(`/api/proxy?url=${encodeURIComponent(audioSrcUrl)}&filename=audio.mp3`);
+      const audioResp = await fetch("/api/proxy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: audioSrcUrl, filename: "audio.mp3", http_headers: result?.http_headers || {} })
+      });
       const audioArrayBuffer = await audioResp.arrayBuffer();
       const ac = new AudioContext();
       const decodedAudio = await ac.decodeAudioData(audioArrayBuffer);
@@ -153,7 +163,11 @@ export default function Home() {
       // 2 — Fetch images as blob URLs
       for (let i = 0; i < numImages; i++) {
         showToast(`Fetching image ${i + 1}/${numImages}...`, "loading");
-        const r2 = await fetch(`/api/proxy?url=${encodeURIComponent(images[i])}&filename=img_${i}.jpg`);
+        const r2 = await fetch("/api/proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: images[i], filename: `img_${i}.jpg`, http_headers: result?.http_headers || {} })
+        });
         const b = await r2.blob();
         blobUrls.push(URL.createObjectURL(b));
       }

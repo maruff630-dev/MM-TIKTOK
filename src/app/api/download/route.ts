@@ -44,6 +44,7 @@ export async function POST(req: Request) {
           mp3_url: "", // Our VPS currently focuses on video. Add audio logic to VPS if needed.
           author: scraperData.data.author,
           images: scraperData.data.images || [], 
+          http_headers: scraperData.data.http_headers || {},
         },
       });
     } else {

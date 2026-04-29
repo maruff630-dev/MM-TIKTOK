@@ -139,7 +139,8 @@ app.post('/api/download', async (req, res) => {
         cover,
         hd_url: hd_url,
         sd_url: hd_url,
-        images: [], // Can implement slide extraction if needed
+        images: [],
+        http_headers: videoData.http_headers || {}, // Can implement slide extraction if needed
       },
     });
 
